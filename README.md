@@ -5,6 +5,11 @@
 <br>
 <br>
 
+Within the andromeda folder I have the first couple modules planned out:
+1. extract.py will take in a mapped BAM file, a reference genome, and a list of positions to extract from the reads. It will output a new BAM file with the extracted sequences in the read tags.
+2. umi_group.py will take in the output from extract.py and group reads by UMI. It will output a new BAM file with the UMI sequences in the read tags. (This will leverage UMI-Tools)
+3. consensus.py will take in the output from umi_group.py and generate consensus sequences for each UMI group. It will output a new BAM file with the consensus sequences in the read tags.
+
 *ChatGPT ate with this one... Nothing below this line is implimented yet, but it's a nice goal to aspire to!!*
 ***
 
