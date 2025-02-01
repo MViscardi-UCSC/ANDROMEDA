@@ -153,6 +153,10 @@ def call_consensus_from_bam(bam_file: Path, reference_fasta: Path, output_dir: P
 
 def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
     """Generates a plot showing mismatch and confidence rates."""
+    
+    # TODO: I'd rather plot our old thing we had where we showed the average accuracy of the consensus sequences
+    #       and the number of UMI groups at each membership number.
+    
     plt.figure(figsize=(6, 4))
     sns.histplot(df["mismatches"], bins=20, kde=True, color="red", alpha=0.6, label="Mismatches")
     sns.histplot(df["low_confidence"], bins=20, kde=True, color="purple", alpha=0.6, label="Low Confidence")
