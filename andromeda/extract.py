@@ -27,6 +27,7 @@ from andromeda import alignment_tools as AlignTools
 
 def load_reference(reference_path: Path) -> Tuple[str, str]:
     """Loads the reference genome and returns the contig name and sequence."""
+    # TODO: Allow for multiple contigs!!
     ref_seq = SeqIO.read(reference_path, "fasta")
     return str(ref_seq.id), str(ref_seq.seq)
 

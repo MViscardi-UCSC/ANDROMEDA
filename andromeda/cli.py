@@ -14,6 +14,7 @@ import sys
 import andromeda.extract as extract
 import andromeda.ref_pos_picker as ref_pos_picker
 import andromeda.umi_group as umi_group
+import andromeda.consensus as consensus
 
 
 def main():
@@ -44,6 +45,14 @@ def main():
     for action in umi_group_subparser._actions:
         if action.dest not in {"help"}:
             umi_group_parser._add_action(action)
+    
+    # 📍 Add the Consensus Command
+    consensus_parser = subparsers.add_parser("consensus",
+                                             help="Generate consensus sequences from UMI groups.")
+    consensus_subparser = consensus.parse_args()
+    for action in consensus_subparser._actions:
+        if action.dest not in {"help"}:
+            consensus_parser._add_action(action)
 
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -57,6 +66,9 @@ def main():
     
     elif args.command == "group-umis":
         umi_group.group_umis(args)
+    
+    elif args.command == "consensus":
+        consensus.call_consensus_and_plot(args)
 
 
 if __name__ == "__main__":
