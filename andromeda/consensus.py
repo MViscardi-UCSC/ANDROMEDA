@@ -15,7 +15,7 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from typing import Dict, List, Tuple
 
-from andromeda.alignment_tools import regex_parse_long_cs
+from andromeda.alignment_tools import extract_ref_and_query_region
 
 def load_reference(reference_path: str | Path, contig: str = None):
     with open(reference_path, "r") as handle:
@@ -74,7 +74,10 @@ def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_
     """Aligns reads to reference orientation."""
     aligned_seqs = []
     for read in reads:
-        _, _, _, query_seq_ref_oriented, _ = regex_parse_long_cs(read.get_tag("cs"))
+        query_seq_ref_oriented = extract_ref_and_query_region(read,
+                                                              reference_seq,
+                                                              0, len(reference_seq))["query_sequence"]
+        # _, _, _, query_seq_ref_oriented, _ = regex_parse_long_cs(read.get_tag("cs"))
         cons_len_string = (f"{read.reference_start * ' '}"
                            f"{query_seq_ref_oriented}"
                            f"{(len(reference_seq) - read.reference_end) * ' '}")
@@ -102,7 +105,11 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment], reference_seq:
         column = [seq[i].upper() for seq in aligned_seqs if i < len(seq)]
         base_counts = pd.Series(column).value_counts()
         total = base_counts.sum()
-        major_base = base_counts.idxmax()
+        try:
+            major_base = base_counts.idxmax()  # can throw error?
+        except ValueError:
+            print(f"Error at position {i} with column: {column} for reads: {reads}")
+            break
         major_fraction = base_counts.max() / total if total > 0 else 0
 
         if major_base == ref_base:
@@ -177,7 +184,7 @@ def call_consensus_and_plot(args: argparse.Namespace):
         reference_fasta=args.reference_fasta,
         output_dir=args.output_dir,
         min_group_size=args.min_group_size,
-    )
+    )  # TODO: Fix the save path to have a better name (more specific)
     print("📊 Plotting consensus quality...")
     df = pd.read_csv(args.output_dir / "consensus_sequences.tsv", sep="\t")
     if args.plot:
