@@ -97,7 +97,7 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment], reference_seq:
     Returns:
         Tuple[str, Dict]: Consensus sequence and stats dictionary.
     """
-    # TODO: work on this function to add phred averaging and 
+    # TODO: work on this function to add phred averaging
     aligned_seqs = extract_ref_oriented_sequences(reads, reference_seq)
 
     output_seq = []
