@@ -12,9 +12,12 @@ https://stackoverflow.com/questions/58886389/how-can-i-create-a-dictionary-that-
 https://nanoporetech.com/support/software/data-analysis/where-can-i-find-out-more-about-quality-scores
 http://samtools.github.io/hts-specs/
 """
+import random
 from typing import List
 from math import log10
 from tqdm.auto import tqdm
+
+from utils import clamp
 
 
 class NucleotideQuality:
@@ -151,8 +154,9 @@ class PhredString:
     def adjust_values(self, adjustment_list: List[float]):
         assert len(adjustment_list) == len(self.phred_chars), "Adjustment list must be the same length as Phred string."
         for i, adjustment in enumerate(adjustment_list):
-            assert 1 >= adjustment > 0, "Adjustment values must be greater than 0 and less than or equal to 1."
-            self.phred_chars[i] *= adjustment
+            self.phred_chars[i] = NucleotideQuality(
+                prob_error=clamp((self.phred_chars[i].to_prob_error() * adjustment), 0, 1),
+            )
 
 
 def avg_phred_strings(phred_strings: List[PhredString]) -> PhredString:
@@ -223,16 +227,46 @@ if __name__ == '__main__':
     for i in tqdm(range(100), desc=f"Testing Speed while averaging {len(tester_phreds):>4} Phred strings"):
         test_main(tester_phreds, print_stuff=False)
         
-    tester_phreds *= 10  # So we are now testing 50 phred strings per averaging step
-    for i in tqdm(range(100), desc=f"Testing Speed while averaging {len(tester_phreds):>4} Phred strings"):
-        test_main(tester_phreds, print_stuff=False)
-        
-    tester_phreds *= 10  # So we are now testing 500 phred strings per averaging step
-    for i in tqdm(range(100), desc=f"Testing Speed while averaging {len(tester_phreds):>4} Phred strings"):
-        test_main(tester_phreds, print_stuff=False)
+    # tester_phreds *= 10  # So we are now testing 50 phred strings per averaging step
+    # for i in tqdm(range(100), desc=f"Testing Speed while averaging {len(tester_phreds):>4} Phred strings"):
+    #     test_main(tester_phreds, print_stuff=False)
+    #     
+    # tester_phreds *= 10  # So we are now testing 500 phred strings per averaging step
+    # for i in tqdm(range(100), desc=f"Testing Speed while averaging {len(tester_phreds):>4} Phred strings"):
+    #     test_main(tester_phreds, print_stuff=False)
         
     # tester_phreds *= 10  # So we are now testing 5000 phred strings per averaging step
     # for i in tqdm(range(100), desc=f"Testing Speed while averaging {len(tester_phreds):>4} Phred strings"):
     #     test_main(tester_phreds, print_stuff=False)
     
     # Speed seems pretty linear!!
+    
+    # multiplying:
+    test_confidence_scores = [clamp(random.random(), 0.5, 1.0) for _ in range(len(tester_phreds[0]))]
+    # TODO: Ensure that we double check that we have reciprocal confidence scores when we do the real thing!
+    #       This is because we want to lower the Phred score for positions with lower confidence scores.
+    #       And since we are adjusting the probability of error, we need to bring those closer to 1!
+    recip_confidence_scores = [1 / score for score in test_confidence_scores]
+    test_phred_1 = PhredString(tester_phreds[0])
+    
+    spacer = 7
+    print("\n\nTesting multiplication:")
+    print("Original:")
+    print(*[f"{i:^{spacer}}" for i in test_phred_1.to_phred_chars()])
+    print(*[f"{i:^{spacer}.2g}" for i in test_phred_1.to_prob_errors()])
+    print("-" * ((spacer + 1) * len(test_phred_1)))
+    print("Confidence scores:")
+    print(*[f"{i:^{spacer}.2g}" for i in test_confidence_scores])
+    print("Reciprocal Confidence scores:")
+    print(*[f"{i:^{spacer}.2g}" for i in recip_confidence_scores])
+    print("-" * ((spacer + 1) * len(test_phred_1)))
+    
+    og_string = test_phred_1.to_phred_string()
+    test_phred_1.adjust_values(recip_confidence_scores)
+    new_string = test_phred_1.to_phred_string()
+    print("Adjusted:")
+    print(*[f"{i:^{spacer}}" for i in test_phred_1.to_phred_chars()])
+    print(*[f"{i:^{spacer}.2g}" for i in test_phred_1.to_prob_errors()])
+    print("-" * ((spacer + 1) * len(test_phred_1)))
+    print(f"Original string: {og_string}")
+    print(f"Adjusted string: {new_string}")
