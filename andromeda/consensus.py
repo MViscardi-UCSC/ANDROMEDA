@@ -76,8 +76,9 @@ def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_
     for read in reads:
         query_seq_ref_oriented = extract_ref_and_query_region(read,
                                                               reference_seq,
-                                                              0, len(reference_seq))["query_sequence"]
-        # _, _, _, query_seq_ref_oriented, _ = regex_parse_long_cs(read.get_tag("cs"))
+                                                              read.reference_start,
+                                                              read.reference_end,
+                                                              )["query_sequence"]
         cons_len_string = (f"{read.reference_start * ' '}"
                            f"{query_seq_ref_oriented}"
                            f"{(len(reference_seq) - read.reference_end) * ' '}")
@@ -96,6 +97,7 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment], reference_seq:
     Returns:
         Tuple[str, Dict]: Consensus sequence and stats dictionary.
     """
+    # TODO: work on this function to add phred averaging and 
     aligned_seqs = extract_ref_oriented_sequences(reads, reference_seq)
 
     output_seq = []
@@ -106,10 +108,9 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment], reference_seq:
         base_counts = pd.Series(column).value_counts()
         total = base_counts.sum()
         try:
-            major_base = base_counts.idxmax()  # can throw error?
+            major_base = base_counts.idxmax()  # can throw error if we run out of sequence
         except ValueError:
-            print(f"Error at position {i} with column: {column} for reads: {reads}")
-            break
+            major_base = " "
         major_fraction = base_counts.max() / total if total > 0 else 0
 
         if major_base == ref_base:
