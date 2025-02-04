@@ -35,23 +35,23 @@ IUPAC_DNA = {
 }
 
 
-def bam_to_tagged_bam2(bam_file_path: Path,
-                       target_chr: str,
-                       ref_seq: str,
-                       umi_ref_start: int,
-                       umi_ref_end: int,
-                       flanking_seq_to_capture=0,
-                       save_dir=None,
-                       mkdir=True,
-                       read_id_suffix="",
-                       add_read_id_suffix_from_tag=None,
-                       save_suffix=".tagged.bam",
-                       max_del_in_umi=0,
-                       max_ins_in_umi=0,
-                       max_iupac_mismatches=0,
-                       restrict_to_length=True,
-                       bam_tag_dict: Dict[str, str] = None,
-                       subset_count=-1) -> Path:
+def bam_to_tagged_bam(bam_file_path: Path,
+                      target_chr: str,
+                      ref_seq: str,
+                      umi_ref_start: int,
+                      umi_ref_end: int,
+                      flanking_seq_to_capture=0,
+                      save_dir=None,
+                      mkdir=True,
+                      read_id_suffix="",
+                      add_read_id_suffix_from_tag=None,
+                      save_suffix=".tagged.bam",
+                      max_del_in_umi=0,
+                      max_ins_in_umi=0,
+                      max_iupac_mismatches=0,
+                      restrict_to_length=True,
+                      bam_tag_dict: Dict[str, str] = None,
+                      subset_count=-1) -> Path:
     """
     Extract UMIs from a BAM file and write them to a new BAM file with the UMI sequence
     and deletion count stored in tags.
@@ -126,9 +126,9 @@ def bam_to_tagged_bam2(bam_file_path: Path,
                 pysam.AlignmentFile(failed_bam_path, "wb", header=input_bam.header) as failed_bam:
             for i, entry in bam_iterator:
                 try:
-                    entry_dict = extract_ref_and_query_region2(entry, ref_seq,
-                                                               adj_umi_ref_start,
-                                                               adj_umi_ref_end)
+                    entry_dict = extract_ref_and_query_region(entry, ref_seq,
+                                                              adj_umi_ref_start,
+                                                              adj_umi_ref_end)
                     extracted_seq: str = entry_dict["query_sequence"]
                     ins_count: int = entry_dict["ins_count"]
                     del_count: int = entry_dict["del_count"]
@@ -206,13 +206,13 @@ def bam_to_tagged_bam2(bam_file_path: Path,
     return output_bam_path
 
 
-def extract_ref_and_query_region2(target_entry: pysam.AlignedSegment, ref_seq: str,
-                                  region_start: int, region_end: int) -> dict:
+def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: str,
+                                 region_start: int, region_end: int) -> dict:
     """
     Extracts reference and query regions from a given aligned segment.
 
-    This function extracts the reference and query positions and sequences from a given aligned segment that fall within a specified range.
-    It also provides the option to write the output to a file and print the output.
+    This function extracts the reference and query positions and sequences from a given aligned segment that
+    fall within a specified range. It also provides the option to write the output to a file and print the output.
 
     Args:
         target_entry (pysam.AlignedSegment): The aligned segment from which to extract the reference and query regions.
@@ -340,6 +340,7 @@ def bam_to_df(bam_file_path: Path, subset_count=-1) -> pd.DataFrame:
             if 0 < subset_count <= i:
                 break
     return pd.DataFrame(output_dict).T
+
 
 def regex_parse_long_cs(cs_string):
     """
