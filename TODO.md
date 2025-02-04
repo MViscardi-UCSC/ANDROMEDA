@@ -12,7 +12,7 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
 ---
 
 ## 🏗️ Phase 1: Project Setup & Structure  
-- [ ] **1. Initialize the project repository**  
+- [X] **1. Initialize the project repository**  
    - Create the `ANDROMEDA/` folder and subdirectories:  
      ```
      ANDROMEDA/
@@ -45,7 +45,7 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
      pip install pysam umi-tools
      ```
 
-- [ ] **3. Convert Jupyter Notebooks into Modular Python Scripts**  
+- [X] **3. Convert Jupyter Notebooks into Modular Python Scripts**  
    - Identify reusable functions from notebooks.  
    - Break them into **extract.py, umi_group.py, and consensus.py**.  
    - Replace hardcoded file paths with function arguments.  
@@ -54,7 +54,7 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
 
 ## 🚀 Phase 2: Core Module Development  
 
-- [ ] **4. Implement `extract.py`** (Barcode & UMI Extraction)  
+- [X] **4. Implement `extract.py`** (Barcode & UMI Extraction)  
    - **Inputs**:  
      - Mapped **BAM file**  
      - Reference **genome FASTA**  
@@ -65,25 +65,26 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
      - Use **pysam** for BAM file handling.  
    - **Outputs**: New BAM file with extracted sequences in read tags.  
 
-- [ ] **5. Implement `umi_group.py`** (UMI Grouping)  
+- [X] **5. Implement `umi_group.py`** (UMI Grouping)  
    - **Inputs**: BAM file with UMI tags (from `extract.py`).  
    - **Process**:  
      - Use **UMI-Tools** to cluster reads by UMI.  
      - Assign UMI groups and tag BAM reads.  
    - **Outputs**: BAM file with UMI group tags (`UG`).  
 
-- [ ] **6. Implement `consensus.py`** (Consensus Sequence Generation)  
+- [X] **6. Implement `consensus.py`** (Consensus Sequence Generation)  
    - **Inputs**: BAM file with UMI groups (from `umi_group.py`).  
    - **Process**:  
      - Collapse reads into consensus sequences per UMI group.  
      - Add **metadata tags** (member count, confidence scores).  
    - **Outputs**: BAM file with consensus sequences in read tags.  
+   - **TODO**: Get the final output into BAM file format, currently we output consensus sequences in TSV!!
 
 ---
 
 ## ⚙️ Phase 3: CLI & Usability  
 
-- [ ] **7. Implement Command-Line Interface (`cli.py`)**  
+- [x] **7. Implement Command-Line Interface (`cli.py`)**  
    - Users should be able to run individual steps:  
      ```bash
      python -m andromeda.cli extract --input mapped.bam --ref genome.fa --positions pos.txt --output extracted.bam
