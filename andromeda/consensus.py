@@ -72,6 +72,7 @@ def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, Lis
 
 def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_seq: str) -> List[str]:
     """Aligns reads to reference orientation."""
+    # TODO: THIS IS BROKEN BECAUSE WE HAVE DELETIONS BEING RETAINED!!
     aligned_seqs = []
     for read in reads:
         query_seq_ref_oriented = extract_ref_and_query_region(read,

@@ -16,6 +16,8 @@ from typing import List, Tuple, Dict
 from tqdm.auto import tqdm
 import re
 
+from phred_tools import NucleotideQuality
+
 IUPAC_DNA = {
     "A": "A",
     "C": "C",
@@ -213,6 +215,19 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
 
     This function extracts the reference and query positions and sequences from a given aligned segment that
     fall within a specified range. It also provides the option to write the output to a file and print the output.
+    
+    The final outputs for a read with the following cigar string would look like this:
+        2M2D3M2I3M
+        
+        query_positions: [0, 1, 2, None, None, 3, 4, 5, 6, 7, 8, 9, 10]
+        
+        query_sequence:   A  T  G     .     .  A  T  G  a  t  A  T   G
+        
+        ref_positions:   [0, 1, 2, 3, 4, 5, 6, 7, None, None, 8, 9, 10]
+        
+        ref_sequence:     A  T  G  t  g  A  T  G     .     .  A  T   G
+    
+    
 
     Args:
         target_entry (pysam.AlignedSegment): The aligned segment from which to extract the reference and query regions.
@@ -239,12 +254,15 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
     aligned_pairs = target_entry.get_aligned_pairs(with_seq=False)
     region_query_positions = extract_query_positions_from_ref(aligned_pairs, region_start, region_end)
     region_query_sequence = [target_entry.query_sequence[i] if i else "." for i in region_query_positions]
-
+    
+    region_query_phreds = [NucleotideQuality(q_score=target_entry.query_qualities[i]).to_phred_char()
+                           if i else " " for i in region_query_positions]
+    
     region_ref_sequence_matched, region_query_sequence_matched = [], []
     ins_count, del_count, was_perfect, mismatch_count = 0, 0, True, 0
     if not region_ref_sequence or not region_query_sequence:
         was_perfect = False
-    for ref, query in zip(region_ref_sequence, region_query_sequence):
+    for ref, query, phred in zip(region_ref_sequence, region_query_sequence, region_query_phreds):
         ref, query = ref.upper(), query.upper()
         if ref == query:
             region_ref_sequence_matched.append(ref)
@@ -274,6 +292,10 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
                    'ins_count': ins_count, 'del_count': del_count, 'mismatch_count': mismatch_count,
                    'perfect_match': was_perfect}
     return return_dict
+
+
+def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_seq: str) -> List[str]:
+    pass
 
 
 def extract_positions_within_range(positions, start, end):
