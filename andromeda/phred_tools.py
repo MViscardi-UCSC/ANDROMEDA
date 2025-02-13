@@ -51,6 +51,9 @@ class NucleotideQuality:
             return NucleotideQuality(prob_error=(self.to_prob_error() * other))
         else:
             raise TypeError(f"Unsupported type for multiplication with NucleotideQuality class: {type(other)}")
+    
+    def __str__(self):
+        return self.to_phred_char()
 
     def to_phred_char(self) -> str:
         if self.char is not None:
@@ -185,6 +188,9 @@ def avg_raw_phred_strings_to_raw_string(phred_strings: List[str]) -> str:
 
 def avg_phred_char_strings(phred_chars: List[str]) -> str:
     return avg_phred_strings([PhredString(phred_char) for phred_char in phred_chars]).to_phred_string()
+
+def avg_phred_char_strings_to_obj(phred_chars: List[str]) -> NucleotideQuality:
+    return avg_phred_strings([PhredString(phred_char) for phred_char in phred_chars])[0]
 
 
 def show_phred_table():

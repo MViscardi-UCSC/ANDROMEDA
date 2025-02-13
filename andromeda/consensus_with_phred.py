@@ -145,8 +145,6 @@ def extract_ref_oriented_sequence_with_phred(read_alignment: pysam.AlignedSegmen
     region_query_sequence = [read_alignment.query_sequence[i] if i else "." for i in region_query_positions]
     region_query_phreds = [pT.NucleotideQuality(q_score=read_alignment.query_qualities[i]).to_phred_char()
                            if i else " " for i in region_query_positions]
-    if read_alignment.reference_start >= 5:
-        print("potentially interesting region")
     output_dict = {
         "ref_positions": region_ref_positions,
         "ref_sequence": region_ref_sequence,
@@ -210,8 +208,14 @@ def pick_major_base_and_phred(column: List[Tuple[str, str]]) -> Tuple[str, str]:
         major_base = " "
     major_fraction = base_counts.max() / total if total > 0 else 0
     major_phred_scores = [base[1] for base in column if base[0] == major_base]
-    avg_phred = pT.avg_phred_char_strings(major_phred_scores)
-    avg_phred *= (1 / major_fraction)  # TODO: Try different methods here!!
+    avg_phred = pT.avg_phred_char_strings_to_obj(major_phred_scores)
+    # if avg_phred.to_phred_char() != " " and avg_phred.to_prob_error() > 0.15:
+    #     print("Woah, high error rate!")
+    if avg_phred.to_phred_char() != " ":
+        avg_phred *= (1 / major_fraction)  # TODO: Try different methods here!!
+        avg_phred = avg_phred.to_phred_char()
+    else:
+        avg_phred = " "
     return major_base, avg_phred, major_fraction
 
 
@@ -306,6 +310,9 @@ def compute_majority_consensus_with_phred(reads: List[pysam.AlignedSegment],
         elif major_base == " ":
             stats["gaps"] += 1
             output_key.append(" ")
+        elif major_base == ".":
+            stats["gaps"] += 1
+            output_key.append("D")
         else:
             stats["mismatches"] += 1
             output_key.append("X")
@@ -321,7 +328,37 @@ def compute_majority_consensus_with_phred(reads: List[pysam.AlignedSegment],
     return "".join(output_seq), "".join(output_phreds), "".join(output_key), stats
 
 
-def call_consensus_from_bam(bam_file: Path, reference_fasta: Path, output_dir: Path, min_group_size: int = 2):
+def create_consensus_cigar(match_str, collapse_X_to_M=False) -> Tuple[str, int]:
+    """
+    Creates a CIGAR string for a consensus sequence and extracts the start position.
+    :param match_str: A string of cigar-like characters (M, X, D, or space)
+    :param collapse_X_to_M: If True, X characters will be converted to M characters
+    :return: Tuple of CIGAR string and start position
+    """
+    # The match_str is a long list of values (M, X, D, or space) that we can use to build a CIGAR string
+    if collapse_X_to_M:
+        match_str = match_str.replace("X", "M")
+    cigared_str = []
+    current_char_count = 0
+    current_char = None
+    for char in match_str:
+        if char == current_char:
+            current_char_count += 1
+        else:
+            if current_char is not None and current_char != " ":
+                cigared_str.append(f"{current_char_count}{current_char}")
+            current_char = char
+            current_char_count = 1
+    if current_char is not None and current_char_count > 0 and current_char != " ":
+        cigared_str.append(f"{current_char_count}{current_char}")
+    return "".join(cigared_str), match_str.index("M")
+
+
+def call_consensus_from_bam(bam_file: Path,
+                            reference_fasta: Path,
+                            output_dir: Path,
+                            mismatches_in_cigar: bool = False,
+                            min_group_size: int = 2):
     """
     Main function to extract UMIs, compute consensus sequences, and save results.
 
@@ -338,11 +375,25 @@ def call_consensus_from_bam(bam_file: Path, reference_fasta: Path, output_dir: P
 
     print("📍 Extracting UMI groups...")
     umi_groups = extract_umi_groups(bam_file, min_group_size)
+    
+    if len(umi_groups) == 0:
+        print("")
+        raise ValueError("❌ No UMI groups found matching provided cutoffs! Exiting.")
 
     results = []
-    for umi_id, reads in tqdm(umi_groups.items(), desc="🔬 Calling consensus"):
+    consensus_iterator = tqdm(umi_groups.items(), desc="🔬 Calling consensus")
+    for umi_id, reads in consensus_iterator:
+        # consensus_iterator.set_description(f"🔬 Calling consensus (uID: {umi_id}, #: {len(reads)})")
+        consensus_iterator.set_postfix_str(f"Current uID: {umi_id:0>5}; Members: {len(reads):>4}")
         consensus_seq, consensus_phred, match_str, stats = compute_majority_consensus_with_phred(reads, reference_seq)
-        results.append({"UMI": umi_id, "Consensus": consensus_seq, **stats})
+        consensus_cigar, consensus_start = create_consensus_cigar(match_str,
+                                                                  collapse_X_to_M=mismatches_in_cigar)
+        results.append({
+            "UMI": umi_id,
+            "Consensus": consensus_seq,
+            "CIGAR": consensus_cigar,
+            "start_pos": consensus_start,
+            **stats})
 
     df = pd.DataFrame(results)
     df.to_csv(output_dir / "consensus_sequences.tsv", sep="\t", index=False)
@@ -405,6 +456,7 @@ def main():
         reference_fasta=args.reference_fasta,
         output_dir=args.output_dir,
         min_group_size=args.min_group_size,
+        mismatches_in_cigar=True,  # TODO: Mess with this?
     )
     if args.plot:
         plot_consensus_stats(df, args.output_dir)
