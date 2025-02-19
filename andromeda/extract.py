@@ -201,12 +201,12 @@ def save_umi_counts(bam_file: Path, output_dir: Path, umis=None):
 def parse_args():
     parser = argparse.ArgumentParser(description="Extract UMIs from BAM files based on mapped reference positions.")
 
-    parser.add_argument("bam_file", type=Path,
-                        help="Path to input BAM file.")
     parser.add_argument("reference_fasta", type=Path,
                         help="Path to reference FASTA file.")
-    parser.add_argument("umi_positions", type=Path,
-                        help="TSV file with UMI positions per contig. You can use ref-pos-picker to generate this.")
+    parser.add_argument("bam_file", type=Path,
+                        help="Path to input BAM file.")
+    # parser.add_argument("umi_positions", type=Path,
+    #                     help="TSV file with UMI positions per contig. You can use ref-pos-picker to generate this.")
     parser.add_argument("output_dir", type=Path,
                         help="Output directory to save results.")
     parser.add_argument("--flanking", type=int, default=0,
@@ -222,10 +222,12 @@ def parse_args():
 
 
 def extract_umis_and_summarize(args):
+    assert args.reference_fasta.with_suffix(".fasta.targetUMIs.csv").exists(), ("UMI positions file not found!\n"
+                                                                                f"Looked here: {args.reference_fasta.with_suffix('.fasta.targetUMIs.csv')}")
     tagged_bams = extract_umis_from_bam(
         bam_file=args.bam_file,
         reference_file=args.reference_fasta,
-        umi_positions_file=args.umi_positions,
+        umi_positions_file=args.reference_fasta.with_suffix(".fasta.targetUMIs.csv"),
         output_dir=args.output_dir,
         flanking_seq_to_capture=args.flanking,
         mismatch_tolerance=args.mismatch_tolerance,
@@ -243,10 +245,10 @@ def main(override_args=None):
 if __name__ == "__main__":
     print(Path.cwd())
     overiding_args = Namespace(
-        bam_file=Path("../examples/mapped_reads/ont3RACE_PCR8.sorted.calmd.bam"),
-        reference_fasta=Path("../examples/references/ref.3RACE.fasta"),
-        umi_positions=Path("../examples/references/ref.3RACE.fasta.targetUMIs.csv"),
-        output_dir=Path("../examples/umi_tagging"),
+        bam_file=Path("../examples/3RACE/mapped_reads/ont3RACE_PCR8.sorted.calmd.bam"),
+        reference_fasta=Path("../examples/3RACE/references/ref.3RACE.fasta"),
+        # umi_positions=Path("../examples/3RACE/references/ref.3RACE.fasta.targetUMIs.csv"),
+        output_dir=Path("../examples/3RACE/umi_tagging"),
         flanking=5,
         mismatch_tolerance=2,
         subset=-1,

@@ -16,7 +16,7 @@ from typing import List, Tuple, Dict
 from tqdm.auto import tqdm
 import re
 
-from phred_tools import NucleotideQuality
+from andromeda.phred_tools import NucleotideQuality
 
 IUPAC_DNA = {
     "A": "A",
