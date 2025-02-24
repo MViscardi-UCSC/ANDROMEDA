@@ -219,22 +219,7 @@ def group_umis(args):
 def main():
     parser = parse_args()
     args = parser.parse_args()
-
-    # Run UMI grouping
-    grouped_bam = run_umi_tools_group(
-        tagged_bam=args.tagged_bam,
-        output_parent_dir=args.output_parent_dir,
-        umi_tag=args.load_umi_tag,
-        cell_tag=args.cell_tag,
-        edit_dist=args.edit_dist,
-        per_contig=args.per_contig,
-        per_gene=args.per_gene,
-        per_cell=args.per_cell,
-    )
-
-    # Generate UMI grouping statistics
-    tsv_file = grouped_bam.with_suffix(".tsv")
-    plot_umi_distribution(tsv_file, args.output_dir / "plots")
+    pipeline_main(args)
 
 
 def pipeline_main(args):

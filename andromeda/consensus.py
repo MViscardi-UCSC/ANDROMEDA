@@ -455,7 +455,7 @@ def dependencies():
 
 def main():
     args = parse_args().parse_args()
-    call_consensus_and_plot(args)
+    pipeline_main(args)
 
 
 def pipeline_main(args: argparse.Namespace):

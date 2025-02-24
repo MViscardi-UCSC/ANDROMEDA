@@ -225,7 +225,7 @@ def pick_umi_regions(args):
 
 def main():
     args = parse_args().parse_args()
-    pick_umi_regions(args)
+    pipeline_main(args)
 
 
 def pipeline_main(args):

@@ -256,7 +256,7 @@ def extract_umis_and_summarize(args):
 
 def main(override_args=None):
     args = override_args or parse_args().parse_args()
-    extract_umis_and_summarize(args)
+    pipeline_main(args)
 
 
 def pipeline_main(args):
@@ -289,17 +289,6 @@ def pipeline_main(args):
     return pass_fwd_dict
 
 if __name__ == "__main__":
-    print(Path.cwd())
-    overiding_args = Namespace(
-        bam_file=Path("../examples/3RACE/mapped_reads/ont3RACE_PCR8.sorted.calmd.bam"),
-        reference_fasta=Path("../examples/3RACE/references/ref.3RACE.fasta"),
-        # umi_positions=Path("../examples/3RACE/references/ref.3RACE.fasta.targetUMIs.csv"),
-        output_dir=Path("../examples/3RACE/umi_tagging"),
-        flanking=5,
-        mismatch_tolerance=2,
-        subset=-1,
-        do_not_confirm=True,
-    )
-    main(override_args=overiding_args)
+    main()
     # TODO: Interestingly, most fails are a single nucleotide short of the expected length, due to a single deletion...
     #       Should we try to retain these species? They might be interesting to look at...
