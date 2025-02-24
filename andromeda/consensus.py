@@ -6,6 +6,8 @@ Marcus Viscardi,    February 6, 2025
 
 """
 import argparse
+from pprint import pprint
+
 import pysam
 from Bio import SeqIO
 import pandas as pd
@@ -14,6 +16,7 @@ import seaborn as sns
 from pathlib import Path
 from tqdm.auto import tqdm
 from typing import Dict, List, Tuple
+import sys
 
 from andromeda.alignment_tools import extract_ref_and_query_region
 
@@ -157,7 +160,7 @@ def pick_major_base(column: List[str]) -> Tuple[str, float]:
     return major_base, major_fraction
 
 
-def pick_major_base_and_phred(column: List[Tuple[str, str]]) -> Tuple[str, str]:
+def pick_major_base_and_phred(column: List[Tuple[str, str]]) -> Tuple[str, str, float]:
     base_counts = pd.Series([base[0] for base in column]).value_counts()
     total = base_counts.sum()
     try:
@@ -165,16 +168,20 @@ def pick_major_base_and_phred(column: List[Tuple[str, str]]) -> Tuple[str, str]:
     except ValueError:
         major_base = " "
     major_fraction = base_counts.max() / total if total > 0 else 0
+    if major_base == " " or major_base == ".":
+        # Pull rip cord if we have a gap or ambiguous base, don't bother with phred scores
+        return major_base, " ", major_fraction
+
     major_phred_scores = [base[1] for base in column if base[0] == major_base]
     avg_phred = pT.avg_phred_char_strings_to_obj(major_phred_scores)
-    # if avg_phred.to_phred_char() != " " and avg_phred.to_prob_error() > 0.15:
-    #     print("Woah, high error rate!")
     if avg_phred.to_phred_char() != " ":
         avg_phred *= (1 / major_fraction)  # TODO: Try different methods here!!
-        avg_phred = avg_phred.to_phred_char()
+        avg_phred_char = avg_phred.to_phred_char()
     else:
-        avg_phred = " "
-    return major_base, avg_phred, major_fraction
+        avg_phred_char = " "
+    if avg_phred.to_prob_error() > 1:  # This should help with clamping the phred scores
+        avg_phred_char = "!"
+    return major_base, avg_phred_char, major_fraction
 
 
 def compute_majority_consensus(reads: List[pysam.AlignedSegment],
@@ -197,7 +204,7 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment],
     if calc_avg_phreds:
         aligned_phreds = [seq["query_phreds"] for seq in aligned_seqs_and_phreds]
         assert len(aligned_seqs) == len(aligned_phreds), "Mismatched lengths of sequences and phreds!"
-    
+
     output_seq = []
     output_phreds = []
     output_key = []
@@ -222,7 +229,10 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment],
             stats["matches"] += 1
             output_key.append("M")
         elif major_base == " ":
-            stats["gaps"] += 1
+            # stats["gaps"] += 1  # Dropped b/c this is just "soft-clipping"
+            output_key.append(" ")
+        elif major_base == "." and "M" not in output_key:
+            # This is just a weird edge case where we have a gap at the start of the sequence
             output_key.append(" ")
         elif major_base == ".":
             stats["gaps"] += 1
@@ -270,21 +280,22 @@ def create_consensus_cigar(match_str, collapse_X_to_M=False) -> Tuple[str, int]:
 
 def call_consensus_from_bam(bam_file: Path,
                             reference_fasta: Path,
-                            output_dir: Path,
-                            mismatches_in_cigar: bool = False,
+                            output_parent_dir: Path,
+                            mismatches_in_cigar: bool = True,
                             calc_avg_phreds: bool = True,
-                            min_group_size: int = 2) -> pd.DataFrame:
+                            min_group_size: int = 2) -> Tuple[pd.DataFrame, Path]:
     """
     Main function to extract UMIs, compute consensus sequences, and save results.
 
     Args:
         bam_file (Path): Input BAM file with UMI groups.
         reference_fasta (Path): Reference genome.
-        output_dir (Path): Directory for output.
+        output_parent_dir (Path): Directory for output.
         mismatches_in_cigar (bool): If True, mismatches (X) will be included in the CIGAR string.
         calc_avg_phreds (bool): If True, average phred scores will be calculated for each base.
         min_group_size (int): Minimum reads per UMI group.
     """
+    output_dir = Path(output_parent_dir) / "consensus"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("📂 Loading reference...")
@@ -292,7 +303,7 @@ def call_consensus_from_bam(bam_file: Path,
 
     print("📍 Extracting UMI groups...")
     umi_groups = extract_umi_groups(bam_file, min_group_size)
-    
+
     if len(umi_groups) == 0:
         print("")
         raise ValueError("❌ No UMI groups found matching provided cutoffs! Exiting.")
@@ -305,24 +316,30 @@ def call_consensus_from_bam(bam_file: Path,
         consensus_seq, consensus_phred, match_str, stats = compute_majority_consensus(reads, reference_seq,
                                                                                       calc_avg_phreds=calc_avg_phreds)
         consensus_cigar, consensus_start = create_consensus_cigar(match_str,
-                                                                  collapse_X_to_M=mismatches_in_cigar)
+                                                                  collapse_X_to_M=not mismatches_in_cigar)
+        consensus_seq_trimmed = consensus_seq.replace(" ", "").replace(".", "")
+        # We probably need to do the same as above with the phred scores...
+        consensus_phred_trimmed = consensus_phred.replace(" ", "")  # TODO: Did this work?
+        assert len(consensus_seq_trimmed) == len(consensus_phred_trimmed), "Mismatched lengths of sequence and phred!"
         results.append({
             "UMI": umi_id,
-            "Consensus": consensus_seq,
+            "Consensus": consensus_seq_trimmed,
+            "Phred": consensus_phred_trimmed,
             "CIGAR": consensus_cigar,
             "start_pos": consensus_start,
             **stats})
 
     df = pd.DataFrame(results)
     output_file_name = bam_file.stem + "_consensus_sequences.tsv"
-    df.to_csv(output_dir / output_file_name, sep="\t", index=False)
-    print(f"✅ Saved consensus sequences to {output_dir}/{output_file_name}")
+    output_file_path = output_dir / output_file_name
+    df.to_csv(output_file_path, sep="\t", index=False)
+    print(f"✅ Saved consensus sequences to {output_file_path}")
 
     # plot_consensus_stats(df, output_dir)
-    return df
+    return df, output_file_path
 
 
-def concensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Path) -> Path:
+def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Path, template_bam: Path) -> Path:
     """
     Converts a DataFrame of consensus sequences to a BAM file.
     Args:
@@ -330,19 +347,46 @@ def concensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
         output_bam (Path): Path to save the output BAM file.
         reference_fasta (Path): Path to reference FASTA file.
     """
-    with pysam.FastaFile(reference_fasta) as ref:
-        header = {"HD": {"VN": "1.6"}, "SQ": [{"LN": ref.get_reference_length(ref.references[0]), "SN": ref.references[0]}]}
-        with pysam.AlignmentFile(output_bam, "wb", header=header) as outf:
+    with (pysam.FastaFile(reference_fasta) as ref,
+          pysam.AlignmentFile(template_bam, "rb") as template):
+        header = template.header.to_dict()
+        # pprint(header)
+        previous_program_pn = header['PG'][-1]['PN']
+        add_to_header = {"ID": "ANDROMEDA-consensus",
+                         "PN": "ANDROMEDA",
+                         "PP": previous_program_pn,  # This needs to be the PN of the previous program!!
+                         "VN": "0.0.01",
+                          "CL": " ".join(sys.argv)}
+        header['PG'].append(add_to_header)
+        # pprint(header)
+        with pysam.AlignmentFile(output_bam, "wb",
+                                 header=header,
+                                 # template=template,
+                                 ) as outf:
             for _, row in df.iterrows():
+                assert len(row["Consensus"]) == len(row["Phred"]), "Mismatched lengths of sequence and phred!"
                 read = pysam.AlignedSegment()
-                read.query_name = row["UMI"]
+                read.query_name = f"UMIID{row['UMI']:0>6}"
                 read.query_sequence = row["Consensus"]
+                read.flag = 0
                 read.cigarstring = row["CIGAR"]
                 read.reference_start = row["start_pos"]
                 read.reference_id = 0
-                read.flag = 0
+                read.mapping_quality = 20  # Arbitrary for now
+                read.template_length = len(read.query_sequence)
+                read.query_qualities = pT.PhredString(phred_string=row["Phred"]).to_q_scores()
+                read.set_tag("ug", row["group_size"], "i")
                 outf.write(read)
     print(f"✅ Saved BAM file: {output_bam}")
+    pysam.sort("-o", str(output_bam.with_suffix(".sorted.bam")), str(output_bam))
+    print(f"✅ Sorted BAM file: {output_bam.with_suffix('.sorted.bam')}")
+    pysam.index(str(output_bam.with_suffix('.sorted.bam')))
+    print(f"✅ Indexed BAM file: {output_bam.with_suffix('.sorted.bam')}.bai")
+    output_sam = output_bam.with_suffix('.sorted.bam').with_suffix(".sam")
+    output_sam.touch()
+    pysam.view("-ho", str(output_sam), str(output_bam.with_suffix('.sorted.bam')),
+               save_stdout=str(output_sam))
+    print(f"✅ Saved SAM file: {output_bam.with_suffix('.sam')}")
     return output_bam
 
 
@@ -368,43 +412,54 @@ def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
 
 
 def call_consensus_and_plot(args: argparse.Namespace):
-    call_consensus_from_bam(
-        bam_file=args.bam_file,
-        reference_fasta=args.reference_fasta,
-        output_dir=args.output_dir,
+    df, tsv_path = call_consensus_from_bam(
+        bam_file=args.grouped_bam,
+        reference_fasta=args.ref_fasta,
+        output_parent_dir=args.output_parent_dir,
         min_group_size=args.min_group_size,
+        mismatches_in_cigar=True,
     )
-    print("📊 Plotting consensus quality...")
-    df = pd.read_csv(args.output_dir / "consensus_sequences.tsv", sep="\t")
-    if args.plot:
+    output_bam_name = args.grouped_bam.stem + ".consensus_sequences.bam"
+    bam_path = consensus_df_to_bam(df, args.output_parent_dir / "consensus" / output_bam_name,
+                                   args.ref_fasta,
+                                   args.grouped_bam)
+    if args.consensus_plot:
         plot_consensus_stats(df, args.output_dir)
+    return tsv_path, bam_path
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Compute consensus sequences for UMI groups in BAM files.")
 
-    parser.add_argument("bam_file", type=Path, help="Path to input BAM file (must have UMIs tagged).")
-    parser.add_argument("reference_fasta", type=Path, help="Path to reference FASTA file.")
-    parser.add_argument("output_dir", type=Path, help="Directory to save consensus sequences.")
-    parser.add_argument("--min-group-size", type=int, default=2, help="Minimum reads per UMI group.")
-    parser.add_argument("--plot", action="store_true", help="Plot consensus quality.")
+    parser.add_argument("grouped_bam", type=Path,
+                        help="Path to input BAM file (must have UMIs grouped).")
+    parser.add_argument("ref_fasta", type=Path,
+                        help="Path to reference FASTA file.")
+    parser.add_argument("output_parent_dir", type=Path,
+                        help="Parent directory to make a new directory inside to save outputs.")
+    parser.add_argument("--min-group-size", type=int, default=2,
+                        help="Minimum reads per UMI group.")
+    parser.add_argument("--consensus-plot", action="store_true",
+                        help="Plot consensus quality.")
 
     return parser
 
 
+def dependencies():
+    return {
+        "grouped_bam": "umi_group.grouped_bam",
+        "ref_fasta": "ref_pos_picker.ref_fasta",
+        "output_parent_dir": "ref_pos_picker.output_dir",
+    }
+
+
 def main():
     args = parse_args().parse_args()
-    df = call_consensus_from_bam(
-        bam_file=args.bam_file,
-        reference_fasta=args.reference_fasta,
-        output_dir=args.output_dir,
-        min_group_size=args.min_group_size,
-        mismatches_in_cigar=True,
-    )
-    output_bam_name = args.bam_file.stem + "_consensus_sequences.bam"
-    bam_path = concensus_df_to_bam(df, args.output_dir / output_bam_name, args.reference_fasta)
-    if args.plot:
-        plot_consensus_stats(df, args.output_dir)
+    call_consensus_and_plot(args)
+
+
+def pipeline_main(args: argparse.Namespace):
+    call_consensus_and_plot(args)
 
 
 if __name__ == "__main__":

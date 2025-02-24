@@ -75,6 +75,7 @@ def extract_umis_from_bam(
         subset_count: int = -1,
         mismatch_tolerance: int = 0,
         force: bool = False,
+        umi_tag: str = "uM",
 ):
     """Extracts UMIs from a BAM file and tags reads with UMI sequences."""
 
@@ -113,7 +114,7 @@ def extract_umis_from_bam(
         print(f"    📍 Ready to extract UMI at position {umi_index + 1}: ({umi_positions[0]}-{flanking_seq_to_capture},"
               f" {umi_positions[1]}+{flanking_seq_to_capture})")
         print(f"    🔍 Sequence: "
-              f"{ref_seq[flank_adjusted_positions[0]:flank_adjusted_positions[1]]}")
+              f"{ref_seq[flank_adjusted_positions[0]:flank_adjusted_positions[1]+1]}")
         if not force:
             confirm_selection = input("    Confirm selection? (y/N): ").strip().lower()
             if confirm_selection != "y":
@@ -136,12 +137,16 @@ def extract_umis_from_bam(
         else:
             suffix = ".tagged.bam"
             tag_dict = {
-                "umi_sequence": "uM",
+                "umi_sequence": umi_tag,
                 "deletion_count": "ud",
                 "insertion_count": "ui",
                 "mismatch_count": "um",
                 "umi_length": "ul",
             }
+            if umi_tag != "uM":
+                assert umi_tag not in [v for k, v in tag_dict.items() if k != "umi_sequence"], \
+                    (f"❌ UMI tag '{umi_tag}' already in use! "
+                     f"Please choose a different tag or use the default 'uM'.")
 
         tagged_bam = AlignTools.bam_to_tagged_bam(
             bam_file, contig, ref_seq,
@@ -152,7 +157,7 @@ def extract_umis_from_bam(
             subset_count=subset_count,
             save_suffix=suffix,
             max_del_in_umi=0,  # Keep this
-            max_ins_in_umi=0,  # And keep this, b/c is allows for easier downstream analysis
+            max_ins_in_umi=0,  # And keep this, b/c it allows for easier downstream analysis
             max_iupac_mismatches=mismatch_tolerance,  # This could potentially be changed
             restrict_to_length=True,  # The 0 del and 0 ins pretty much forces this already
         )
@@ -201,46 +206,87 @@ def save_umi_counts(bam_file: Path, output_dir: Path, umis=None):
 def parse_args():
     parser = argparse.ArgumentParser(description="Extract UMIs from BAM files based on mapped reference positions.")
 
-    parser.add_argument("reference_fasta", type=Path,
+    parser.add_argument("ref_fasta", type=Path,
                         help="Path to reference FASTA file.")
-    parser.add_argument("bam_file", type=Path,
+    parser.add_argument("mapped_bam", type=Path,
                         help="Path to input BAM file.")
-    # parser.add_argument("umi_positions", type=Path,
-    #                     help="TSV file with UMI positions per contig. You can use ref-pos-picker to generate this.")
-    parser.add_argument("output_dir", type=Path,
-                        help="Output directory to save results.")
-    parser.add_argument("--flanking", type=int, default=0,
+    parser.add_argument("umi_positions", type=Path,
+                        help="TSV file with UMI positions per contig. You can use ref-pos-picker to generate this.")
+    parser.add_argument("output_parent_dir", type=Path,
+                        help="Parent directory to make a new directory inside to save outputs.")
+    parser.add_argument("--extraction-flanking", type=int, default=0,
                         help="Flanking bases to capture around UMI positions.")
-    parser.add_argument("--subset", type=int, default=-1,
+    parser.add_argument("--extraction-subset", type=int, default=-1,
                         help="Subset BAM reads for testing (-1 for all).")
-    parser.add_argument("--do_not_confirm", action="store_true",
+    parser.add_argument("--extraction-do-not-confirm", action="store_true",
                         help="Do not confirm UMI selection.")
-    parser.add_argument("-m", "--mismatch_tolerance", type=int, default=0,
+    parser.add_argument("--extraction-mismatch-tolerance", type=int, default=0,
                         help="Max number allowed IUPAC mismatches in UMI sequence.")
+    parser.add_argument("--store-umi-tag", type=str, default="uM",
+                        help="BAM tag to save UMIs to (default: 'uM').")
 
     return parser
 
 
+def dependencies():
+    return {
+        "ref_fasta": "ref_pos_picker.ref_fasta",
+        "umi_positions": "ref_pos_picker.umi_positions",
+        "output_parent_dir": "ref_pos_picker.output_parent_dir",
+    }
+
 def extract_umis_and_summarize(args):
-    assert args.reference_fasta.with_suffix(".fasta.targetUMIs.csv").exists(), ("UMI positions file not found!\n"
-                                                                                f"Looked here: {args.reference_fasta.with_suffix('.fasta.targetUMIs.csv')}")
+    output_dir = args.output_parent_dir / "tagging"
+    assert args.umi_positions.exists(), \
+        (f"UMI positions file not found!\n"
+         f"Looked here: {args.umi_positions}")
     tagged_bams = extract_umis_from_bam(
-        bam_file=args.bam_file,
-        reference_file=args.reference_fasta,
-        umi_positions_file=args.reference_fasta.with_suffix(".fasta.targetUMIs.csv"),
-        output_dir=args.output_dir,
-        flanking_seq_to_capture=args.flanking,
-        mismatch_tolerance=args.mismatch_tolerance,
-        subset_count=args.subset,
-        force=args.do_not_confirm,
+        bam_file=args.mapped_bam,
+        reference_file=args.ref_fasta,
+        umi_positions_file=args.umi_positions,
+        output_dir=output_dir,
+        flanking_seq_to_capture=args.extraction_flanking,
+        mismatch_tolerance=args.extraction_mismatch_tolerance,
+        subset_count=args.extraction_subset,
+        force=args.extraction_do_not_confirm,
+        umi_tag=args.store_umi_tag,
     )
     for bam_path in tagged_bams:
-        save_umi_counts(bam_path, args.output_dir)
+        save_umi_counts(bam_path, output_dir)
 
 def main(override_args=None):
     args = override_args or parse_args().parse_args()
     extract_umis_and_summarize(args)
 
+
+def pipeline_main(args):
+    output_dir = args.output_parent_dir / "tagging"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    assert args.umi_positions.exists(), \
+        (f"UMI positions file not found!\n"
+         f"Looked here: {args.umi_positions}")
+    tagged_bams = extract_umis_from_bam(
+        bam_file=args.mapped_bam,
+        reference_file=args.ref_fasta,
+        umi_positions_file=args.umi_positions,
+        output_dir=output_dir,
+        flanking_seq_to_capture=args.extraction_flanking,
+        mismatch_tolerance=args.extraction_mismatch_tolerance,
+        subset_count=args.extraction_subset,
+        force=args.extraction_do_not_confirm,
+        umi_tag=args.store_umi_tag,
+    )
+    for bam_path in tagged_bams:
+        save_umi_counts(bam_path, output_dir)
+    pass_fwd_dict = {
+        "output_parent_dir": args.output_parent_dir,
+        "load_umi_tag": args.store_umi_tag,
+    }
+    if len(tagged_bams) == 1:
+        pass_fwd_dict["tagged_bam"] = tagged_bams[0]
+    else:
+        raise NotImplementedError("Multiple tagged BAMs not yet supported.")
+    return pass_fwd_dict
 
 if __name__ == "__main__":
     print(Path.cwd())
@@ -255,3 +301,5 @@ if __name__ == "__main__":
         do_not_confirm=True,
     )
     main(override_args=overiding_args)
+    # TODO: Interestingly, most fails are a single nucleotide short of the expected length, due to a single deletion...
+    #       Should we try to retain these species? They might be interesting to look at...

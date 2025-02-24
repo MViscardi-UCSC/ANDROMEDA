@@ -151,9 +151,14 @@ def get_user_selection(ref_seq: str) -> Tuple[int, int]:
                 print("🔄 Let's try again.")
         except ValueError:
             print("❌ Invalid input. Please enter numeric values.")
+        except KeyboardInterrupt:
+            print("\n🚪 Exiting without selection.")
+            break
+    return -1, -1
 
 
-def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding: int = 5):
+def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding: int = 5,
+                          output_parent_dir: str = None) -> Path:
     """Runs the CLI-based UMI region selection."""
     reference_fasta_PATH = Path(reference_fasta_path)
     ref_contig, ref_seq = load_reference(reference_fasta_path, contig=contig)
@@ -173,10 +178,16 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
     
     save_request = input("Would you like to save these coordinates to a file? (y/N): ").strip().lower()
     if save_request == "y":
-        save_path = reference_fasta_PATH.parent / f"{reference_fasta_PATH.name}.targetUMIs.csv"
+        if output_parent_dir:
+            assert Path(output_parent_dir).is_dir(), f"Output parent directory not found: {output_parent_dir}"
+            output_dir = Path(output_parent_dir) / "reference"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            save_path = output_dir / f"{reference_fasta_PATH.name}.targetUMIs.csv"
+        else:
+            save_path = reference_fasta_PATH.parent / f"{reference_fasta_PATH.name}.targetUMIs.csv"
         current_datetime = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         if save_path.exists():
-            print(f"\n⚠️ File already exists: {save_path}. Appending to it.")
+            print(f"\n⚠️ File already exists: {save_path}. Appending to it (delete the file if this isn't the goal!).")
             with open(save_path, "a") as file:
                 file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
         else:
@@ -185,28 +196,49 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
                 file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
         print(f"\n📝 Coordinates saved to {save_path.name} in the reference file directory.\n"
               f"{save_path.absolute()}")
+        return save_path
     else:
         print("🚪 Exiting without saving.")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Select UMI region from reference sequence.")
-    parser.add_argument("reference_fasta", type=str,
-                        help="Path to reference FASTA file with ambiguous bases contained.")
-    parser.add_argument("--padding", type=int, default=5,
+    parser = argparse.ArgumentParser(description="Tool to select UMI region from reference sequence.")
+    parser.add_argument("ref_fasta", type=Path,
+                        help="Path to reference FASTA file.")
+    parser.add_argument("output_parent_dir", type=Path,
+                        help="Parent directory to make a new directory inside to save outputs.")
+    parser.add_argument("--disp-padding", type=int, default=5,
                         help="Padding around ambiguous bases for display.")
     parser.add_argument("--contig", type=str, default=None,
                         help="Contig/Chromosome name to extract UMI region from, default is first in FASTA.")
     return parser
 
 
+def dependencies():
+    return {
+    }
+
+
 def pick_umi_regions(args):
-    run_umi_region_picker(args.reference_fasta, contig=args.contig, padding=args.padding)
+    run_umi_region_picker(args.ref_fasta, contig=args.contig, padding=args.padding)
 
 
 def main():
     args = parse_args().parse_args()
     pick_umi_regions(args)
+
+
+def pipeline_main(args):
+    umi_positions = run_umi_region_picker(args.ref_fasta,
+                                          contig=args.contig,
+                                          padding=args.disp_padding,
+                                          output_parent_dir=args.output_parent_dir)
+    pass_fwd_dict = {
+        "ref_fasta": args.ref_fasta,
+        "umi_positions": umi_positions,
+        "output_parent_dir": args.output_parent_dir
+    }
+    return pass_fwd_dict
 
 
 if __name__ == "__main__":

@@ -177,7 +177,7 @@ def bam_to_tagged_bam(bam_file_path: Path,
 
                     if i % 100 == 0:
                         bam_iterator.desc = (f"Extracting UMIs | {i:,} reads | "
-                                             f"{len(umi_output_set):,} unique UMIs | "
+                                             f"{len(umi_output_set):,} fitting UMIs | "
                                              f"{umi_drop_count:,} dropped UMIs")
                     if 0 < subset_count <= i:
                         break
@@ -205,6 +205,8 @@ def bam_to_tagged_bam(bam_file_path: Path,
                            f"\t\tDropped {dropped_for_too_long:>8,} UMIs for being too long\n"
                            f"\t\tDropped {dropped_for_too_short:>8,} UMIs for being too short\n")
     print(summary_string)
+    with open(output_bam_path.with_suffix(".summary.txt"), "w") as summary_file:
+        summary_file.write(summary_string)
     return output_bam_path
 
 
