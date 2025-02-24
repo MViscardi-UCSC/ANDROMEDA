@@ -28,12 +28,17 @@ def get_dependencies():
     return dependencies
 
 def resolve_dependencies(args, module_name, outputs):
+    # TODO: Make sure this is working as expected!!!!
     dependencies = get_dependencies()
     if module_name in dependencies:
         required_inputs = dependencies[module_name]
         for arg, dep in required_inputs.items():
-            if not getattr(args, arg, None) and dep in outputs:
-                setattr(args, arg, outputs[dep])
+            already_set = bool(getattr(args, arg, None))
+            outputs_source, outputs_name = dep.split(".")
+            if outputs_source in outputs and outputs_name in outputs[outputs_source]:
+                setattr(args, arg, outputs[outputs_source][outputs_name])
+            elif not already_set and outputs_source in outputs:
+                setattr(args, arg, outputs[outputs_source])
     return args
 
 def parse_args():
@@ -132,6 +137,10 @@ def main():
                 print(f"  {key}: {value}")
 
             result = module.pipeline_main(module_args)
+            
+            print(f"\n[DEBUG] {module_name} returned:")
+            print(result)
+            
             if result:
                 outputs[command_name] = result
 

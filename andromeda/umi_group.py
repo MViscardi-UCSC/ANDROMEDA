@@ -52,8 +52,9 @@ def run_umi_tools_group(
     
     assert output_parent_dir.exists(), f"Output directory does not exist: {output_parent_dir}"
     output_dir = output_parent_dir / "grouped"
-    
     output_dir.mkdir(parents=True, exist_ok=True)
+    
+    assert tagged_bam.exists(), f"Tagged BAM file not found: {tagged_bam}"
     
     grouped_bam = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.bam").name
     group_out_tsv = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.tsv").name
@@ -194,26 +195,6 @@ def dependencies():
         "tagged_bam": "extract.tagged_bam",
         "output_parent_dir": "ref_pos_picker.output_parent_dir",
     }
-
-
-def group_umis(args):
-    # Run UMI grouping
-    grouped_bam = run_umi_tools_group(
-        tagged_bam=args.tagged_bam,
-        output_parent_dir=args.output_parent_dir,
-        umi_tag=args.load_umi_tag,
-        cell_tag=args.cell_tag,
-        edit_dist=args.grouping_edit_dist,
-        edit_frac=args.grouping_edit_frac,
-        per_contig=args.per_contig,
-        per_gene=args.per_gene,
-        per_cell=args.per_cell,
-    )
-    
-    # Generate UMI grouping statistics
-    tsv_file = grouped_bam.with_suffix(".tsv")
-    if args.grouping_plot:  # TODO: Add a "just-plot" option to the CLI, so we can run this script on existing data!
-        plot_umi_distribution(tsv_file, args.output_parent_dir / "grouping" / "plots")
 
 
 def main():
