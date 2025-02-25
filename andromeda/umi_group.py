@@ -58,10 +58,6 @@ def run_umi_tools_group(
     
     assert tagged_bam.exists(), f"Tagged BAM file not found: {tagged_bam}"
     
-    grouped_bam = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.bam").name
-    group_out_tsv = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.tsv").name
-    group_log = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.log").name
-    
     # Let's calculate the edit distance fraction if it wasn't provided
     if edit_frac <= 0 and edit_dist <= 0:
         # if this is the case we'll just default to 0
@@ -79,6 +75,11 @@ def run_umi_tools_group(
               f" and UMI length: {len(umi)}")
     elif edit_frac > 0 and edit_dist > 0:
         print("Both edit distance and fraction provided, using edit distance.")
+    
+    # Output files
+    grouped_bam = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.bam").name
+    group_out_tsv = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.tsv").name
+    group_log = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.log").name
 
     print(f"📍 Running UMI grouping with edit distance {edit_dist} "
           f"(this will not produce any outputs until complete, please be patient!)")
@@ -112,6 +113,7 @@ def run_umi_tools_group(
         raise ValueError("per_cell requires a cell_tag to be provided! and vice versa!")
 
     # Run UMI grouping
+    print(f"\n    [DEBUG] Running command:\n    {' '.join(group_call)}")
     process = subprocess.Popen(group_call, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     
     # Print stdout and stderr live
@@ -123,8 +125,6 @@ def run_umi_tools_group(
     process.stdout.close()
     process.stderr.close()
     process.wait()
-    
-    # subprocess.run(group_call check=True)  # TODO: Put this less crazy version back if it works better
 
     # Index BAM
     subprocess.run(["samtools", "index", str(grouped_bam)], check=True)
@@ -221,7 +221,7 @@ def pipeline_main(args):
 
     # Generate UMI grouping statistics
     tsv_file = grouped_bam.with_suffix(".tsv")
-    if args.grouping_plot:  # TODO: Add a "just-plot" option to the CLI, so we can run this script on existing data!
+    if args.grouping_plot:
         plot_umi_distribution(tsv_file, args.output_parent_dir / "grouping" / "plots")
         # "grouped-bam": "umi_group.grouped_bam",
         # "ref-fasta": "Reference FASTA file",
