@@ -218,15 +218,15 @@ def parse_args():
     parser.add_argument("output_parent_dir", type=Path,
                         help="Parent directory to make a new directory inside to save outputs.")
     parser.add_argument("--extraction-flanking", type=int, default=0,
-                        help="Flanking bases to capture around UMI positions.")
+                        help="Flanking bases to capture around UMI positions [default: 0].")
     parser.add_argument("--extraction-subset", type=int, default=-1,
-                        help="Subset BAM reads for testing (-1 for all).")
+                        help="Subset number of BAM reads for testing (-1 for all) [default: -1].")
     parser.add_argument("--extraction-do-not-confirm", action="store_true",
                         help="Do not confirm UMI selection.")
     parser.add_argument("--extraction-mismatch-tolerance", type=int, default=0,
-                        help="Max number allowed IUPAC mismatches in UMI sequence.")
+                        help="Max number allowed IUPAC mismatches in UMI sequence [default: 0].")
     parser.add_argument("--store-umi-tag", type=str, default="uM",
-                        help="BAM tag to save UMIs to (default: 'uM').")
+                        help="BAM tag to save UMIs to [default: 'uM'].")
 
     return parser
 
@@ -237,6 +237,7 @@ def dependencies():
         "umi_positions": "ref_pos_picker.umi_positions",
         "output_parent_dir": "ref_pos_picker.output_parent_dir",
     }
+
 
 def extract_umis_and_summarize(args):
     output_dir = args.output_parent_dir / "tagging"
@@ -256,6 +257,7 @@ def extract_umis_and_summarize(args):
     )
     for bam_path in tagged_bams:
         save_umi_counts(bam_path, output_dir)
+
 
 def main(override_args=None):
     args = override_args or parse_args().parse_args()
@@ -290,6 +292,7 @@ def pipeline_main(args):
     else:
         raise NotImplementedError("Multiple tagged BAMs not yet supported.")
     return pass_fwd_dict
+
 
 if __name__ == "__main__":
     main()

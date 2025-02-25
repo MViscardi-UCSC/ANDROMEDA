@@ -210,7 +210,7 @@ def parse_args():
     parser.add_argument("output_parent_dir", type=Path,
                         help="Parent directory to make a new directory inside to save outputs.")
     parser.add_argument("--disp-padding", type=int, default=5,
-                        help="Padding around ambiguous bases for display.")
+                        help="Padding around ambiguous bases for display. [default: 5]")
     parser.add_argument("--contig", type=str, default=None,
                         help="Contig/Chromosome name to extract UMI region from, default is first in FASTA.")
     return parser

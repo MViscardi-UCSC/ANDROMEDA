@@ -439,7 +439,7 @@ def parse_args():
     parser.add_argument("output_parent_dir", type=Path,
                         help="Parent directory to make a new directory inside to save outputs.")
     parser.add_argument("--min-group-size", type=int, default=2,
-                        help="Minimum reads per UMI group.")
+                        help="Minimum reads per UMI group [default: 2].")
     parser.add_argument("--consensus-plot", action="store_true",
                         help="Plot consensus quality.")
 

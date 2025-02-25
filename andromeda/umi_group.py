@@ -101,10 +101,10 @@ def run_umi_tools_group(
     elif per_gene and per_contig:
         group_call.extend(["--per-gene", "--per-contig"])
     elif per_contig:
-        print("🔍 --per-contig grouping option selected, adding --per-gene (umi-tools requires this).")
+        print("    🔍 --per-contig grouping option selected, adding --per-gene (umi-tools requires this).")
         group_call.extend(["--per-gene", "--per-contig"])
     else:
-        print("🔍 No grouping option selected, defaulting to per-contig.")
+        print("    🔍 No grouping option selected, defaulting to per-contig.")
         group_call.extend(["--per-gene", "--per-contig"])
     if per_cell and cell_tag:
         group_call.extend(["--per-cell", "--cell-tag", cell_tag])
