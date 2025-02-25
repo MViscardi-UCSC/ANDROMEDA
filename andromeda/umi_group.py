@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm.auto import tqdm
 
+HELP_TEXT = f"Group UMIs using `umi_tools group` with a given HAMMING edit distance."
+
 
 def run_umi_tools_group(
         tagged_bam: Path,

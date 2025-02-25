@@ -23,6 +23,8 @@ from pathlib import Path
 from typing import List, Tuple
 import argparse
 
+HELP_TEXT = "Quick tool to select UMI region from reference sequence."
+
 
 def load_reference(reference_path: str | Path, contig: str = None):
     with open(reference_path, "r") as handle:

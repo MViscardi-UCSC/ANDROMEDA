@@ -5,7 +5,14 @@ Marcus Viscardi,    January 31, 2025
 This allows you to call the different functions from the command line from ~one place.
 For example:
 ```bash
-python -m andromeda.cli pick-umi-region -r reference.fasta -c contig_name
+python andromeda ref_pos_picker ref.fasta output_parent_directory
+python andromeda extract ref.fasta mapped.bam output_parent_directory
+python andromeda umi_group tagged.bam output_parent_directory
+python andromeda consensus ref.fasta grouped.bam output_parent_directory
+```
+or
+```bash
+python andromeda run-all ref.fasta mapped.bam output_parent_directory
 ```
 """
 import argparse
@@ -18,6 +25,8 @@ MODULES = [
     "andromeda.umi_group",
     "andromeda.consensus"
 ]
+
+MODULE_NAMES = [module.split(".")[-1] for module in MODULES]
 
 def get_dependencies():
     dependencies = {}
@@ -41,7 +50,17 @@ def resolve_dependencies(args, module_name, outputs):
                 setattr(args, arg, outputs[outputs_source])
     return args
 
+
+def peek_command():
+    import sys
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    return None
+
+
 def parse_args():
+    command_to_run = peek_command()
+    
     parser = argparse.ArgumentParser(description="ANDROMEDA CLI: Modular UMI Extraction and Processing.")
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
@@ -50,15 +69,22 @@ def parse_args():
 
     for module_name in MODULES:
         module = import_module(module_name)
+        module_help = module.HELP_TEXT if hasattr(module, "HELP_TEXT") else f"Run {module_name} module."
         command_name = module_name.split(".")[-1]
-        subcommand = subparsers.add_parser(command_name, help=f"Run {command_name} module")
+        subcommand = subparsers.add_parser(command_name,
+                                           help=module_help)
 
         module_parser = module.parse_args()
         module_parsers[command_name] = module_parser
         for action in module_parser._actions:
             if action.dest not in {"help"}:
                 subcommand._add_action(action)
-
+    
+    if command_to_run in MODULE_NAMES:
+        # Don't bother with the run-all parser if we're just running a single module
+        # This should help with time a bit too!
+        return parser.parse_args()
+    
     run_all_parser = subparsers.add_parser("run-all",
                                            help="Run all ANDROMEDA modules in sequence.")
     run_all_parser.add_argument("ref_fasta", type=Path,
@@ -77,7 +103,7 @@ def parse_args():
         for action in module_parser._actions:
             if action.dest not in {"ref_fasta", "output_parent_dir", "mapped_bam", "help"}:
                 # Suppress required check if this argument is a dependency
-                if action.dest in dependencies:
+                if command_to_run == "run-all" and action.dest in dependencies:
                     action.required = False
                     action.help = argparse.SUPPRESS
                 group._add_action(action)

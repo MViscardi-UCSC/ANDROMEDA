@@ -24,6 +24,9 @@ from tqdm.auto import tqdm
 
 from andromeda import alignment_tools as AlignTools
 
+HELP_TEXT = f"Extract UMIs from mapped reads (from a BAM file) based on aligned reference positions."
+
+
 def load_reference(reference_path: str | Path, contig: str = None):
     with open(reference_path, "r") as handle:
         records = [record for record in SeqIO.parse(handle, "fasta")]

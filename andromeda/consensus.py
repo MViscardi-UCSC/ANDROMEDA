@@ -3,7 +3,7 @@ consensus.py
 Marcus Viscardi,    February 6, 2025
 
 
-
+Complute/collapse consensus sequences for UMI groups in BAM files.
 """
 import argparse
 from pprint import pprint
@@ -19,8 +19,9 @@ from typing import Dict, List, Tuple
 import sys
 
 from andromeda.alignment_tools import extract_ref_and_query_region
-
 import andromeda.phred_tools as pT
+
+HELP_TEXT = f"Compute/collapse consensus sequences for UMI groups in BAM files."
 
 
 def load_reference(reference_path: str | Path, contig: str = None):
@@ -431,10 +432,10 @@ def call_consensus_and_plot(args: argparse.Namespace):
 def parse_args():
     parser = argparse.ArgumentParser(description="Compute consensus sequences for UMI groups in BAM files.")
 
-    parser.add_argument("grouped_bam", type=Path,
-                        help="Path to input BAM file (must have UMIs grouped).")
     parser.add_argument("ref_fasta", type=Path,
                         help="Path to reference FASTA file.")
+    parser.add_argument("grouped_bam", type=Path,
+                        help="Path to input BAM file (must have UMIs grouped).")
     parser.add_argument("output_parent_dir", type=Path,
                         help="Parent directory to make a new directory inside to save outputs.")
     parser.add_argument("--min-group-size", type=int, default=2,
