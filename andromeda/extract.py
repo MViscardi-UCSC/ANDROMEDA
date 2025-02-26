@@ -23,34 +23,9 @@ import re
 from tqdm.auto import tqdm
 
 from andromeda import alignment_tools as AlignTools
+from andromeda.io_utils import load_reference
 
 HELP_TEXT = f"Extract UMIs from mapped reads (from a BAM file) based on aligned reference positions."
-
-
-def load_reference(reference_path: str | Path, contig: str = None):
-    with open(reference_path, "r") as handle:
-        records = [record for record in SeqIO.parse(handle, "fasta")]
-    record_ids = [record.id for record in records]
-    records_dict = {record.id: record for record in records}
-    if len(records) > 1:
-        if contig is None:
-            print(f"Found {len(records)} records in reference file, "
-                  f"because you didn't specify a contig we will use "
-                  f"the first one: {record_ids[0]}")
-            target_record = records[0]
-        elif contig not in record_ids:
-            raise ValueError(f"Contig {contig} not found in reference file, "
-                             f"available contigs: {record_ids}")
-        else:
-            target_record = records_dict[contig]
-    else:
-        if contig is not None and contig not in record_ids:
-            print(f"Found 1 record in reference file ({record_ids[0]}), but you specified a contig: {contig}."
-                  f"We will use the record in the file.")
-        elif contig is not None and contig in record_ids:
-            print(f"Found 1 record in reference file (matching your request for {contig}), using it.")
-        target_record = records[0]
-    return str(target_record.id), str(target_record.seq)
 
 
 def load_umi_positions(umi_positions_file: Path) -> Dict[str, List[Tuple[int, int]]]:

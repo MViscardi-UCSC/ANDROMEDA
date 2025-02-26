@@ -20,34 +20,9 @@ import sys
 
 from andromeda.alignment_tools import extract_ref_and_query_region
 import andromeda.phred_tools as pT
+from andromeda.io_utils import load_reference
 
 HELP_TEXT = f"Compute/collapse consensus sequences for UMI groups in BAM files."
-
-
-def load_reference(reference_path: str | Path, contig: str = None):
-    with open(reference_path, "r") as handle:
-        records = [record for record in SeqIO.parse(handle, "fasta")]
-    record_ids = [record.id for record in records]
-    records_dict = {record.id: record for record in records}
-    if len(records) > 1:
-        if contig is None:
-            print(f"Found {len(records)} records in reference file, "
-                  f"because you didn't specify a contig we will use "
-                  f"the first one: {record_ids[0]}")
-            target_record = records[0]
-        elif contig not in record_ids:
-            raise ValueError(f"Contig {contig} not found in reference file, "
-                             f"available contigs: {record_ids}")
-        else:
-            target_record = records_dict[contig]
-    else:
-        if contig is not None and contig not in record_ids:
-            print(f"Found 1 record in reference file ({record_ids[0]}), but you specified a contig: {contig}."
-                  f"We will use the record in the file.")
-        elif contig is not None and contig in record_ids:
-            print(f"Found 1 record in reference file (matching your request for {contig}), using it.")
-        target_record = records[0]
-    return str(target_record.seq)
 
 
 def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, List[pysam.AlignedSegment]]:
@@ -306,7 +281,7 @@ def call_consensus_from_bam(bam_file: Path,
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("📂 Loading reference...")
-    reference_seq = load_reference(reference_fasta)
+    contig, reference_seq = load_reference(reference_fasta)
 
     print("📍 Extracting UMI groups...")
     umi_groups = extract_umi_groups(bam_file, min_group_size)
