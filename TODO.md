@@ -92,6 +92,11 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
         ```
    - Use `argparse` to manage arguments.
 
+- [ ] **7.5. Add Ability to Process Multiple Contigs in BAM Files**  
+   - Allow users to specify a **contig name** for processing.  
+   - Process only reads from the specified contig.
+   - OR process all contigs in the BAM file.
+
 - [ ] **8. Implement `config.py` for Config Management**  
    - Store default parameters in **JSON/YAML**.  
    - Allow user overrides via CLI options.  
