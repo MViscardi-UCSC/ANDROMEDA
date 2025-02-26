@@ -17,7 +17,14 @@ from typing import List
 from math import log10
 from tqdm.auto import tqdm
 
-from utils import clamp
+
+def clamp(n: float | int,
+          smallest: float | int,
+          largest: float | int) -> float | int:
+    """
+    Clamp a number between two values.
+    """
+    return max(smallest, min(n, largest))
 
 
 class NucleotideQuality:
