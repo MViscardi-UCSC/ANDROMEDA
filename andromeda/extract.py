@@ -36,7 +36,7 @@ def load_umi_positions(umi_positions_file: Path) -> Dict[str, List[Tuple[int, in
 
     output_dict = {}  # Dict of umi_positions per contig
     for index, row in contig_df.set_index("ref_contig").iterrows():
-        log.info(f"    📍 Region {index}: {row['start']}-{row['end']}")
+        log.info(f"📍 Region {index}: {row['start']}-{row['end']}")
         if index not in output_dict:
             output_dict[index] = [(0, (row["start"], row["end"]))]
         else:

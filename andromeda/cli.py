@@ -184,6 +184,7 @@ def run_all_pipeline(args):
         for key, value in vars(module_args).items():
             if key not in module_actions:
                 actions_debug_str += f"\n    {key}: {value}"
+        log.success(f"Starting to run {module_name}!")
         log.debug(actions_debug_str)
 
         result = module.pipeline_main(module_args)
@@ -191,7 +192,7 @@ def run_all_pipeline(args):
         log.success(f"{module_name} completed successfully!")
 
         if result:
-            log.debug(f"{module_name} returned:", result)
+            log.debug(f"{module_name} returned: {result}")
             outputs[command_name] = result
 
 
