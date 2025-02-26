@@ -15,26 +15,27 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
 - [X] **1. Initialize the project repository**  
    - Create the `ANDROMEDA/` folder and subdirectories:  
      ```
-     ANDROMEDA/
-     ├── andromeda/          # Main package
-     │   ├── __init__.py
-     │   ├── extract.py       # Barcode & UMI extraction
-     │   ├── umi_group.py     # UMI clustering (UMI-Tools)
-     │   ├── consensus.py     # Consensus sequence generation
-     │   ├── io_utils.py      # File handling utilities
-     │   ├── bam_utils.py     # BAM file processing
-     │   ├── config.py        # Configuration management
-     │   ├── logging_utils.py # Logging support
-     │   ├── cli.py           # Command-line interface
-     ├── scripts/             # Helper scripts
-     ├── tests/               # Unit & integration tests
-     ├── docs/                # Documentation
-     ├── examples/            # Example input/output
-     ├── requirements.txt     # Dependencies
-     ├── setup.py             # Installation script
-     ├── README.md            # Project overview
-     ├── LICENSE              # License
-     ├── .gitignore           # Ignore unnecessary files
+        ANDROMEDA/
+        ├── andromeda/          # Main package
+        │   ├── __init__.py
+        │   ├── extract.py       # Barcode & UMI extraction
+        │   ├── umi_group.py     # UMI clustering (UMI-Tools)
+        │   ├── consensus.py     # Consensus sequence generation
+        │   ├── ref_pos_picker.py # Reference position picker
+        │   ├── io_utils.py      # File handling utilities
+        │   ├── bam_utils.py     # BAM file processing
+        │   ├── config.py        # Configuration management
+        │   ├── logging_utils.py # Logging support
+        │   ├── cli.py           # Command-line interface
+        ├── tests/               # Unit & integration tests
+        ├── docs/                # Documentation
+        ├── examples/            # Example input/output
+        ├── requirements.txt     # Dependencies
+        ├── setup.py             # Installation script
+        ├── README.md            # Project overview
+        ├── TODO.md              # This file, development plan
+        ├── LICENSE              # License
+        ├── .gitignore           # Ignore unnecessary files
      ```
    - Add `README.md` and `.gitignore`.  
 
@@ -85,11 +86,11 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
 ## ⚙️ Phase 3: CLI & Usability  
 
 - [x] **7. Implement Command-Line Interface (`cli.py`)**  
-   - Users should be able to run individual steps:  
-     ```bash
-     python -m andromeda.cli extract --input mapped.bam --ref genome.fa --positions pos.txt --output extracted.bam
-     ```
-   - Use `argparse` to manage arguments.  
+   - Users should be able to run individual steps or all steps:  
+        ```bash
+        python andromeda run-all <ref.fasta> <mapped.bam> <output_parent_directory>
+        ```
+   - Use `argparse` to manage arguments.
 
 - [ ] **8. Implement `config.py` for Config Management**  
    - Store default parameters in **JSON/YAML**.  
