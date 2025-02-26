@@ -60,57 +60,75 @@ def peek_command():
     return None
 
 
+def global_parser():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--version", action="version", version="ANDROMEDA v0.1.0",
+                        help="Show the version number and exit.")
+    parser.add_argument("--log-level", default="INFO",
+                        choices=["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"],
+                        help="Set the log level for the logger [default: INFO].")
+    return parser
+
+
 def parse_args():
-    command_to_run = peek_command()
-    
+    # Parse Global Arguments First
+    global_args = global_parser()
+    global_only_parser = argparse.ArgumentParser(parents=[global_args], add_help=False)
+    global_only_args, remaining_argv = global_only_parser.parse_known_args()
+
+    # Main Parser
     parser = argparse.ArgumentParser(description="ANDROMEDA CLI: Modular UMI Extraction and Processing.")
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
     module_parsers = {}
     resolved_deps = get_dependencies()
 
+    # Add Global Arguments to Each Module's Subparser
     for module_name in MODULES:
         module = import_module(module_name)
-        module_help = module.HELP_TEXT if hasattr(module, "HELP_TEXT") else f"Run {module_name} module."
         command_name = module_name.split(".")[-1]
-        subcommand = subparsers.add_parser(command_name,
-                                           help=module_help)
+        subcommand = subparsers.add_parser(command_name, help=f"Run {command_name} module")
+
+        # Add global arguments explicitly for help text visibility
+        global_parser().print_help = subcommand.print_help
+        for action in global_parser()._actions:
+            subcommand._add_action(action)
 
         module_parser = module.parse_args()
         module_parsers[command_name] = module_parser
         for action in module_parser._actions:
             if action.dest not in {"help"}:
                 subcommand._add_action(action)
-    
-    if command_to_run in MODULE_NAMES:
-        # Don't bother with the run-all parser if we're just running a single module
-        # This should help with time a bit too!
-        return parser.parse_args()
-    
-    run_all_parser = subparsers.add_parser("run-all",
-                                           help="Run all ANDROMEDA modules in sequence.")
-    run_all_parser.add_argument("ref_fasta", type=Path,
-                                help="Path to reference FASTA file.")
-    run_all_parser.add_argument("mapped_bam", type=Path,
-                                help="Path to BAM file for UMI extraction.")
-    run_all_parser.add_argument("output_parent_dir", type=Path,
-                                help="Parent directory for outputs.")
-    run_all_parser.add_argument("--umi-positions", type=Path, default=None,
-                                help="Path to UMI position TSV file.")
 
+    # "Run-All" Subparser
+    run_all_parser = subparsers.add_parser("run-all", help="Run all ANDROMEDA modules in sequence.")
+    run_all_parser.add_argument("ref_fasta", type=Path, help="Path to reference FASTA file.")
+    run_all_parser.add_argument("mapped_bam", type=Path, help="Path to BAM file for UMI extraction.")
+    run_all_parser.add_argument("output_parent_dir", type=Path, help="Parent directory for outputs.")
+    run_all_parser.add_argument("--umi-positions", type=Path, default=None, help="Path to UMI position TSV file.")
+
+    # Add global arguments explicitly to run-all
+    for action in global_parser()._actions:
+        run_all_parser._add_action(action)
+
+    # Add module-specific options
     for module_name, module_parser in module_parsers.items():
         group = run_all_parser.add_argument_group(f"{module_name} Options")
         dependencies = resolved_deps.get(module_name, {})
 
         for action in module_parser._actions:
             if action.dest not in {"ref_fasta", "output_parent_dir", "mapped_bam", "help"}:
-                # Suppress required check if this argument is a dependency
-                if command_to_run == "run-all" and action.dest in dependencies:
+                if peek_command() == "run-all" and action.dest in dependencies:
                     action.required = False
                     action.help = argparse.SUPPRESS
                 group._add_action(action)
 
-    return parser.parse_args()
+    # Parse Subcommand Arguments
+    args = parser.parse_args(remaining_argv)
+
+    # Attach Global Arguments to Parsed Args
+    args.log_level = global_only_args.log_level
+    return args
 
 
 def run_all_pipeline(args):
@@ -124,13 +142,15 @@ def run_all_pipeline(args):
         # Let's look to see if we can find the UMI position TSV file
         current_suffix = args.ref_fasta.suffix
         umi_positions = args.ref_fasta.with_suffix(current_suffix + ".targetUMIs.csv")
-        if umi_positions.exists():
+        if umi_positions.exists() and not args.extraction_do_not_confirm:
             use_old_umi_pos = input(f"Found existing UMI position TSV file at {umi_positions}. "
                                     "Use this file? (y/n): ")
             if use_old_umi_pos.lower() == "y":
                 args.umi_positions = umi_positions
             else:
                 args.umi_positions = None
+        elif umi_positions.exists() and args.extraction_do_not_confirm:
+            args.umi_positions = umi_positions
 
     if args.umi_positions:
         assert args.umi_positions.exists(), f"UMI position TSV file not found: {args.umi_positions}"

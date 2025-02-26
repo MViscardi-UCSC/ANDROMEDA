@@ -36,13 +36,15 @@ def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, Lis
     """
     umi_groups = {}
     with pysam.AlignmentFile(bam_file, "rb") as bam:
-        for read in tqdm(bam, desc="📍 Extracting UMI groups", total=bam.mapped):
+        log.trace("Started extracting UMI groups tqdm loop.")
+        for read in tqdm(bam, desc="Extracting UMI groups", total=bam.mapped):
             if not read.has_tag("UG"):
                 continue
             umi_group_id = read.get_tag("UG")
             if umi_group_id not in umi_groups:
                 umi_groups[umi_group_id] = []
             umi_groups[umi_group_id].append(read)
+        log.trace(f"Finished extracting UMI groups tqdm loop (total items processed: {len(umi_groups)})")
 
     # Filter groups by size
     umi_groups = {k: v for k, v in umi_groups.items() if len(v) >= min_group_size}
@@ -288,7 +290,8 @@ def call_consensus_from_bam(bam_file: Path,
         raise ValueError("❌ No UMI groups found matching provided cutoffs! Exiting.")
 
     results = []
-    consensus_iterator = tqdm(umi_groups.items(), desc="🔬 Calling consensus")
+    log.trace("Started calling consensus sequences tqdm loop.")
+    consensus_iterator = tqdm(umi_groups.items(), desc="Calling consensus")
     for umi_id, reads in consensus_iterator:
         # consensus_iterator.set_description(f"🔬 Calling consensus (uID: {umi_id}, #: {len(reads)})")
         consensus_iterator.set_postfix_str(f"Current uID: {umi_id:0>5}; Members: {len(reads):>4}")
@@ -307,7 +310,8 @@ def call_consensus_from_bam(bam_file: Path,
             "CIGAR": consensus_cigar,
             "start_pos": consensus_start,
             **stats})
-
+    log.trace(f"Finished calling consensus sequences tqdm loop (total items processed: {len(results)})")
+    
     df = pd.DataFrame(results)
     output_file_name = bam_file.stem + "_consensus_sequences.tsv"
     output_file_path = output_dir / output_file_name

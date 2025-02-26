@@ -127,6 +127,7 @@ def bam_to_tagged_bam(bam_file_path: Path,
         umi_output_set = set()
         with pysam.AlignmentFile(output_bam_path, "wb", header=input_bam.header) as out_bam, \
                 pysam.AlignmentFile(failed_bam_path, "wb", header=input_bam.header) as failed_bam:
+            log.trace(f"Started extracting UMIs from {bam_file_path} and writing to {output_bam_path}")
             for i, entry in bam_iterator:
                 try:
                     entry_dict = extract_ref_and_query_region(entry, ref_seq,
@@ -191,6 +192,7 @@ def bam_to_tagged_bam(bam_file_path: Path,
                 except Exception as e:
                     log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
                     raise e
+            log.trace(f"Finished extracting UMIs from {bam_file_path} and writing to {output_bam_path}")
     summary_string = (
         f"\n"
         f"Extracted {len(umi_output_set):>8,} unique UMIs from {i + 1:>8,} reads\n"
@@ -360,10 +362,12 @@ def bam_to_df(bam_file_path: Path, subset_count=-1) -> pd.DataFrame:
             iterator_total = subset_count
         bam_iterator = tqdm(enumerate(input_bam.fetch()), total=iterator_total, desc="Extracting Reads")
         output_dict = {}
+        log.trace(f"Started extracting reads from {bam_file_path}")
         for i, entry in bam_iterator:
             output_dict[i] = entry.to_dict()
             output_dict[i].pop("tags")
             output_dict[i].update(entry.get_tags())
             if 0 < subset_count <= i:
                 break
+        log.trace(f"Finished extracting reads from {bam_file_path}")
     return pd.DataFrame(output_dict).T
