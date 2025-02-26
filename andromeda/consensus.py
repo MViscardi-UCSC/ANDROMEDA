@@ -460,14 +460,10 @@ def dependencies():
     }
 
 
-def main():
-    args = parse_args().parse_args()
-    pipeline_main(args)
-
-
 def pipeline_main(args: argparse.Namespace):
     call_consensus_and_plot(args)
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args().parse_args()
+    pipeline_main(args)

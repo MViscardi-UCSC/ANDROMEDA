@@ -199,12 +199,6 @@ def dependencies():
     }
 
 
-def main():
-    parser = parse_args()
-    args = parser.parse_args()
-    pipeline_main(args)
-
-
 def pipeline_main(args):
     # Run UMI grouping
     grouped_bam = run_umi_tools_group(
@@ -237,4 +231,5 @@ def pipeline_main(args):
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args().parse_args()
+    pipeline_main(args)

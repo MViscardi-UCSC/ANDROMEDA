@@ -239,31 +239,6 @@ def dependencies():
     }
 
 
-def extract_umis_and_summarize(args):
-    output_dir = args.output_parent_dir / "tagging"
-    assert args.umi_positions.exists(), \
-        (f"UMI positions file not found!\n"
-         f"Looked here: {args.umi_positions}")
-    tagged_bams = extract_umis_from_bam(
-        bam_file=args.mapped_bam,
-        reference_file=args.ref_fasta,
-        umi_positions_file=args.umi_positions,
-        output_dir=output_dir,
-        flanking_seq_to_capture=args.extraction_flanking,
-        mismatch_tolerance=args.extraction_mismatch_tolerance,
-        subset_count=args.extraction_subset,
-        force=args.extraction_do_not_confirm,
-        umi_tag=args.store_umi_tag,
-    )
-    for bam_path in tagged_bams:
-        save_umi_counts(bam_path, output_dir)
-
-
-def main(override_args=None):
-    args = override_args or parse_args().parse_args()
-    pipeline_main(args)
-
-
 def pipeline_main(args):
     output_dir = args.output_parent_dir / "tagging"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -295,6 +270,7 @@ def pipeline_main(args):
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args().parse_args()
+    pipeline_main(args)
     # TODO: Interestingly, most fails are a single nucleotide short of the expected length, due to a single deletion...
     #       Should we try to retain these species? They might be interesting to look at...
