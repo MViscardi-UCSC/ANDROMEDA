@@ -19,7 +19,9 @@ import argparse
 import sys
 from importlib import import_module
 from pathlib import Path
+
 from andromeda.logger import log
+from andromeda.__version__ import __version__
 
 MODULES = [
     "andromeda.ref_pos_picker",
@@ -61,7 +63,7 @@ def peek_command():
 
 def global_parser():
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--version", action="version", version="ANDROMEDA v0.1.0",
+    parser.add_argument("--version", action="version", version=f"ANDROMEDA v{__version__}",
                         help="Show the version number and exit.")
     parser.add_argument("--log-level", default="INFO",
                         choices=["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"],
