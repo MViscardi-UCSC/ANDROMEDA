@@ -395,23 +395,6 @@ def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def call_consensus_and_plot(args: argparse.Namespace):
-    df, tsv_path = call_consensus_from_bam(
-        bam_file=args.grouped_bam,
-        reference_fasta=args.ref_fasta,
-        output_parent_dir=args.output_parent_dir,
-        min_group_size=args.min_group_size,
-        mismatches_in_cigar=True,
-    )
-    output_bam_name = args.grouped_bam.stem + ".consensus_sequences.bam"
-    bam_path = consensus_df_to_bam(df, args.output_parent_dir / "consensus" / output_bam_name,
-                                   args.ref_fasta,
-                                   args.grouped_bam)
-    if args.consensus_plot:
-        plot_consensus_stats(df, args.output_dir)
-    return tsv_path, bam_path
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Compute consensus sequences for UMI groups in BAM files.")
 
@@ -439,7 +422,20 @@ def dependencies():
 
 @log.catch
 def pipeline_main(args: argparse.Namespace):
-    call_consensus_and_plot(args)
+    df, tsv_path = call_consensus_from_bam(
+        bam_file=args.grouped_bam,
+        reference_fasta=args.ref_fasta,
+        output_parent_dir=args.output_parent_dir,
+        min_group_size=args.min_group_size,
+        mismatches_in_cigar=True,
+    )
+    output_bam_name = args.grouped_bam.stem + ".consensus_sequences.bam"
+    bam_path = consensus_df_to_bam(df, args.output_parent_dir / "consensus" / output_bam_name,
+                                   args.ref_fasta,
+                                   args.grouped_bam)
+    if args.consensus_plot:
+        plot_consensus_stats(df, args.output_dir)
+    return tsv_path, bam_path
 
 
 if __name__ == "__main__":
