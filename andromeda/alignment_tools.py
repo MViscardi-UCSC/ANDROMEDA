@@ -257,8 +257,14 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
     region_query_positions = extract_query_positions_from_ref(aligned_pairs, region_start, region_end)
     region_query_sequence = [target_entry.query_sequence[i] if i else "." for i in region_query_positions]
     
-    region_query_phreds = [NucleotideQuality(q_score=target_entry.query_qualities[i]).to_phred_char()
-                           if i else " " for i in region_query_positions]
+    try:
+        region_query_phreds = [NucleotideQuality(q_score=target_entry.query_qualities[i]).to_phred_char()
+                               if i else " " for i in region_query_positions]
+    except TypeError:
+        # This is a case where the query quality is None because it wasn't stored in the BAM file?
+        # We'll just give every read a perfect quality score for now...
+        # TODO: Expand this functionality a bit more to handle this case better
+        region_query_phreds = ["A" if i else " " for i in region_query_positions]
     
     region_ref_sequence_matched, region_query_sequence_matched = [], []
     ins_count, del_count, was_perfect, mismatch_count = 0, 0, True, 0

@@ -101,8 +101,14 @@ def extract_ref_oriented_sequence(read_alignment: pysam.AlignedSegment,
     region_query_positions = [query for query, ref in aligned_pairs if ref is not None]
     region_query_sequence = [read_alignment.query_sequence[i] if i else "." for i in region_query_positions]
     if extract_phred:
-        region_query_phreds = [pT.NucleotideQuality(q_score=read_alignment.query_qualities[i]).to_phred_char()
-                               if i else " " for i in region_query_positions]
+        try:
+            region_query_phreds = [pT.NucleotideQuality(q_score=read_alignment.query_qualities[i]).to_phred_char()
+                                   if i else " " for i in region_query_positions]
+        except TypeError:
+            # This is a case where the query quality is None because it wasn't stored in the BAM file?
+            # We'll just give every read a "perfect" quality score for now...
+            # TODO: Expand this functionality a bit more to handle this case better
+            region_query_phreds = ["A" if i else " " for i in region_query_positions]
     output_dict = {
         "ref_positions": region_ref_positions,
         "ref_sequence": region_ref_sequence,
