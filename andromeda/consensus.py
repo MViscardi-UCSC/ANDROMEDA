@@ -6,8 +6,6 @@ Marcus Viscardi,    February 6, 2025
 Complute/collapse consensus sequences for UMI groups in BAM files.
 """
 import argparse
-from pprint import pprint
-
 import pysam
 from Bio import SeqIO
 import pandas as pd
@@ -17,8 +15,6 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from typing import Dict, List, Tuple
 import sys
-
-from andromeda.alignment_tools import extract_ref_and_query_region
 import andromeda.phred_tools as pT
 from andromeda.io_utils import load_reference
 
@@ -328,6 +324,7 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
         df (pd.DataFrame): DataFrame with columns: UMI, Consensus, CIGAR, start_pos.
         output_bam (Path): Path to save the output BAM file.
         reference_fasta (Path): Path to reference FASTA file.
+        template_bam (Path): Path to template BAM file. (This is used to copy the header.)
     """
     with (pysam.FastaFile(reference_fasta) as ref,
           pysam.AlignmentFile(template_bam, "rb") as template):
