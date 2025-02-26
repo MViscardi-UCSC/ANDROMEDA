@@ -182,7 +182,7 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
     if save_request == "y":
         if output_parent_dir:
             assert Path(output_parent_dir).is_dir(), f"Output parent directory not found: {output_parent_dir}"
-            output_dir = Path(output_parent_dir) / "reference"
+            output_dir = Path(output_parent_dir) / "references"
             output_dir.mkdir(parents=True, exist_ok=True)
             save_path = output_dir / f"{reference_fasta_PATH.name}.targetUMIs.csv"
         else:
