@@ -128,7 +128,8 @@ def main():
         
         if not args.umi_positions:
             # Let's look to see if we can find the UMI position TSV file
-            umi_positions = args.ref_fasta.with_suffix(".fasta.targetUMIs.csv")
+            current_suffix = args.ref_fasta.suffix
+            umi_positions = args.ref_fasta.with_suffix(current_suffix + ".targetUMIs.csv")
             if umi_positions.exists():
                 use_old_umi_pos = input(f"Found existing UMI position TSV file at {umi_positions}. "
                                         "Use this file? (y/n): ")
