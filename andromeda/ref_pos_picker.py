@@ -197,15 +197,6 @@ def dependencies():
     }
 
 
-def pick_umi_regions(args):
-    run_umi_region_picker(args.ref_fasta, contig=args.contig, padding=args.padding)
-
-
-def main():
-    args = parse_args().parse_args()
-    pipeline_main(args)
-
-
 def pipeline_main(args):
     umi_positions = run_umi_region_picker(args.ref_fasta,
                                           contig=args.contig,
@@ -220,4 +211,5 @@ def pipeline_main(args):
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args().parse_args()
+    pipeline_main(args)
