@@ -302,10 +302,6 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
     return return_dict
 
 
-def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_seq: str) -> List[str]:
-    pass
-
-
 def extract_positions_within_range(positions, start, end):
     """
     Extract positions within a given range from a list of positions.
@@ -370,75 +366,3 @@ def bam_to_df(bam_file_path: Path, subset_count=-1) -> pd.DataFrame:
             if 0 < subset_count <= i:
                 break
     return pd.DataFrame(output_dict).T
-
-
-def regex_parse_long_cs(cs_string):
-    """
-    This is going to parse the long format cs tags into something that I can try to use to walk the reference and query
-    :param cs_string: 
-    :return: Tuple containing the following:
-        ref_seq_full: 
-        query_seq_full:
-        ref_seq_ref_oriented: 
-        query_seq_ref_oriented: 
-        collapsed_hits: 
-    """
-    re_pattern = (r"(?P<match>\=[ACGTN]+)|"
-                  r"(?P<sub>\*[acgtn][acgtn])|"
-                  r"(?P<insert>\+[acgtn]+)|"
-                  r"(?P<del>-[acgtn]+)|"
-                  r"(?P<intron>\~[acgtn]{2}[0-9]+[acgtn]{2})")
-
-    collapsed_hits = []
-
-    ref_seq_full = ""
-    ref_seq_ref_oriented = ""
-    query_seq_full = ""
-    query_seq_ref_oriented = ""
-
-    for re_hits in re.findall(re_pattern, cs_string):
-        match, sub, insert, deletion, intron = re_hits
-        assert sum(map(bool, re_hits)) == 1
-        if match:
-            collapsed_hits.append(match)
-            match_seq = match[1:]
-
-            ref_seq_full += match_seq
-            query_seq_full += match_seq
-
-            ref_seq_ref_oriented += match_seq
-            query_seq_ref_oriented += match_seq
-        elif sub:
-            collapsed_hits.append(sub)
-            sub_seq_ref, sub_seq_query = sub[1], sub[2]
-
-            ref_seq_full += sub_seq_ref
-            query_seq_full += sub_seq_query
-
-            ref_seq_ref_oriented += sub_seq_ref
-            query_seq_ref_oriented += sub_seq_query
-        elif insert:
-            collapsed_hits.append(insert)
-            insert_seq = insert[1:]
-
-            ref_seq_full += "i" * len(insert_seq)
-            query_seq_full += insert_seq
-
-            # ref_seq_ref_oriented is unchanged
-            # query_seq_ref_oriented is unchanged
-        elif deletion:
-            collapsed_hits.append(deletion)
-            del_seq = deletion[1:]
-
-            ref_seq_full += del_seq
-            query_seq_full += "d" * len(del_seq)
-
-            ref_seq_ref_oriented += del_seq
-            query_seq_ref_oriented += "d" * len(del_seq)
-        elif intron:
-            collapsed_hits.append(intron)
-            raise NotImplementedError("I haven't implemented the intron parsing yet...")
-        else:
-            raise ValueError(f"Something went wrong with the regex parsing of the cs tag: {cs_string}")
-    return ref_seq_full, query_seq_full, ref_seq_ref_oriented, query_seq_ref_oriented, collapsed_hits
-
