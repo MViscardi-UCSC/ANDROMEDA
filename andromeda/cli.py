@@ -67,7 +67,10 @@ def global_parser():
                         help="Show the version number and exit.")
     parser.add_argument("--log-level", default="INFO",
                         choices=["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"],
-                        help="Set the log level for the logger [default: INFO].")
+                        help="Set the log level for the stdout logger [default: INFO].")
+    parser.add_argument("--log-file-level", default="DEBUG",
+                        choices=["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"],
+                        help="Set the log level for the file logger [default: DEBUG].")
     return parser
 
 
@@ -138,6 +141,8 @@ def run_all_pipeline(args):
     assert args.mapped_bam.exists(), f"Mapped BAM file not found: {args.mapped_bam}"
     assert args.output_parent_dir.exists(), f"Output parent directory not found: {args.output_parent_dir}"
     assert args.output_parent_dir.is_dir(), f"Output parent directory is not a directory: {args.output_parent_dir}"
+    
+    log.success("Starting ANDROMEDA! Required files found, starting pipeline.")
 
     if not args.umi_positions:
         # Let's look to see if we can find the UMI position TSV file
@@ -148,24 +153,34 @@ def run_all_pipeline(args):
                                     "Use this file? (y/n): ")
             if use_old_umi_pos.lower() == "y":
                 args.umi_positions = umi_positions
+                log.debug(f"Using existing UMI position TSV file at {umi_positions}. The user confirmed this.")
             else:
                 args.umi_positions = None
         elif umi_positions.exists() and args.extraction_do_not_confirm:
             args.umi_positions = umi_positions
-
+            log.debug(f"Using existing UMI position TSV file at {umi_positions}.")
+    else:
+        assert args.umi_positions.exists(), f"UMI position TSV file not found: {args.umi_positions}"
+        log.debug(f"Using provided UMI position TSV file at {args.umi_positions}.")
+    
     if args.umi_positions:
         assert args.umi_positions.exists(), f"UMI position TSV file not found: {args.umi_positions}"
         MODULES.pop(0)  # Remove ref_pos_picker from the list of modules to run
         # Now we need to artificially add the outputs of ref_pos_picker to the outputs dictionary
+        log.debug("Skipping ref_pos_picker, using provided UMI position TSV file.")
         ref_pos_picker_outputs = {
             "ref_fasta": args.ref_fasta,
             "umi_positions": args.umi_positions,
             "output_parent_dir": args.output_parent_dir
         }
         outputs["ref_pos_picker"] = ref_pos_picker_outputs
+    
     for module_name in MODULES:
         command_name = module_name.split(".")[-1]
+        log.success(f"Starting to run {module_name}!")
+        
         module = import_module(module_name)
+        log.trace(f"Imported module: {module_name}")
 
         module_args = argparse.Namespace(**vars(args))
         module_args = resolve_dependencies(module_args, command_name, outputs)
@@ -184,7 +199,6 @@ def run_all_pipeline(args):
         for key, value in vars(module_args).items():
             if key not in module_actions:
                 actions_debug_str += f"\n    {key}: {value}"
-        log.success(f"Starting to run {module_name}!")
         log.debug(actions_debug_str)
 
         result = module.pipeline_main(module_args)
@@ -200,9 +214,6 @@ def run_all_pipeline(args):
 def main():
     args = parse_args()
     
-    if not hasattr(args, "log_level"):
-        args.log_level = "INFO"
-    
     log.remove()
     log.add(sys.stderr, level=args.log_level,
             format='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> '
@@ -210,11 +221,11 @@ def main():
                    '<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>',)
     
     if args.command in [module.split(".")[-1] for module in MODULES]:
-        log.add(f"{args.output_parent_dir}/andromeda_{args.command}" + "_{time}.log", level="TRACE")
+        log.add(f"{args.output_parent_dir}/andromeda_{args.command}" + "_{time}.log", level=args.log_file_level)
         module = import_module(f"andromeda.{args.command}")
         module.pipeline_main(args)
     elif args.command == "run-all":
-        log.add(f"{args.output_parent_dir}/andromeda_run-all" + "_{time}.log", level="TRACE")
+        log.add(f"{args.output_parent_dir}/andromeda_run-all" + "_{time}.log", level=args.log_file_level)
         run_all_pipeline(args)
     else:
         # I want to trigger the more extensive help call (that comes from `run-all --help`) here
