@@ -160,8 +160,14 @@ def main():
             module_args.mapped_bam = args.mapped_bam
 
             print(f"\n[DEBUG] Calling {module_name} with arguments:")
+            module_actions = [action.dest for action in module.parse_args()._actions]
             for key, value in vars(module_args).items():
-                print(f"  {key}: {value}")
+                if key in module_actions or key == "command":
+                    print(f"  {key}: {value}")
+            print(f"\n[DEBUG] Additional arguments carried over for/from other steps:")
+            for key, value in vars(module_args).items():
+                if key not in module_actions:
+                    print(f"  {key}: {value}")
 
             result = module.pipeline_main(module_args)
             
