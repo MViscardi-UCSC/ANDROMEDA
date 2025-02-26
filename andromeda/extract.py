@@ -24,6 +24,7 @@ from tqdm.auto import tqdm
 
 from andromeda import alignment_tools as AlignTools
 from andromeda.io_utils import load_reference
+from andromeda.logger import log
 
 HELP_TEXT = f"Extract UMIs from mapped reads (from a BAM file) based on aligned reference positions."
 
@@ -35,7 +36,7 @@ def load_umi_positions(umi_positions_file: Path) -> Dict[str, List[Tuple[int, in
 
     output_dict = {}  # Dict of umi_positions per contig
     for index, row in contig_df.set_index("ref_contig").iterrows():
-        print(f"    📍 Region {index}: {row['start']}-{row['end']}")
+        log.info(f"    📍 Region {index}: {row['start']}-{row['end']}")
         if index not in output_dict:
             output_dict[index] = [(0, (row["start"], row["end"]))]
         else:
@@ -59,10 +60,10 @@ def extract_umis_from_bam(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("\n📂 Loading reference sequence...")
+    log.info("📂 Loading reference sequence...")
     contig, ref_seq = load_reference(reference_file)
 
-    print("\n🔍 Loading UMI positions...")
+    log.info("🔍 Loading UMI positions...")
     contig_umi_positions = load_umi_positions(umi_positions_file)
 
     if contig not in contig_umi_positions:
@@ -70,36 +71,36 @@ def extract_umis_from_bam(
 
     # TODO: Ability to check multiple contigs one by one.
     umi_positions_list = contig_umi_positions[contig]
-    print(f"✅ Found {len(umi_positions_list)} UMI position sets for contig {contig}")
+    log.info(f"✅ Found {len(umi_positions_list)} UMI position sets for contig {contig}")
 
     output_bams = []
 
-    print("\n🛠 Processing BAM file...")
+    log.info("🛠 Processing BAM file...")
     umi_positions_with_flanking = []
     for umi_index, umi_positions in umi_positions_list:
         umi_positions_with_flanking.append((umi_index,
                                             )
                                            )
     if len(umi_positions_list) > 1:
-        print(f"📝 Tagging multiple UMIs from the same contig ({contig})...")
+        log.info(f"📝 Tagging multiple UMIs from the same contig ({contig})...")
         multiple_umis_per_contig = True
     else:
-        print(f"📝 Tagging single UMI from contig {contig}...")
+        log.info(f"📝 Tagging single UMI from contig {contig}...")
         multiple_umis_per_contig = False
     for umi_index, umi_positions in umi_positions_list:
         flank_adjusted_positions = (umi_positions[0] - flanking_seq_to_capture,
                                     umi_positions[1] + flanking_seq_to_capture)
-        print(f"    📍 Ready to extract UMI at position {umi_index + 1}: ({umi_positions[0]}-{flanking_seq_to_capture},"
-              f" {umi_positions[1]}+{flanking_seq_to_capture})")
-        print(f"    🔍 Sequence: "
-              f"{ref_seq[flank_adjusted_positions[0]:flank_adjusted_positions[1]+1]}")
+        log.info(f"📍 Ready to extract UMI at position {umi_index + 1}: ({umi_positions[0]}-{flanking_seq_to_capture},"
+                 f" {umi_positions[1]}+{flanking_seq_to_capture})")
+        log.info(f"🔍 Sequence: "
+                 f"{ref_seq[flank_adjusted_positions[0]:flank_adjusted_positions[1]+1]}")
         if not force:
             confirm_selection = input("    Confirm selection? (y/N): ").strip().lower()
             if confirm_selection != "y":
-                print("    🔄 Skipping this UMI.")
+                log.info("    🔄 Skipping this UMI.")
                 continue
             else:
-                print("    ✅ UMI confirmed.")
+                log.info("    ✅ UMI confirmed.")
 
         if multiple_umis_per_contig:
             # If multiple UMIs per contig, add a suffix to the BAM file
@@ -146,17 +147,17 @@ def extract_umis_from_bam(
         # Convert the final BAM file to SAM for easier reading
         subprocess.run(["samtools", "view", str(tagged_bam),
                         "-o", str(tagged_bam.with_suffix(".sam"))], check=True)
-        print(f"    ✅ UMI {umi_index + 1} extraction complete! Saved to:")
-        print(f"    📁 {tagged_bam}")
+        log.info(f"✅ UMI {umi_index + 1} extraction complete! Saved to:")
+        log.info(f"📁 {tagged_bam}")
 
-    print("\n✅ UMI extraction complete!")
+    log.info("✅ UMI extraction complete!")
     return output_bams
 
 
 def save_umi_counts(bam_file: Path, output_dir: Path, umis=None):
     """Extracts UMI sequences and saves frequency counts as TSV & Pickle."""
 
-    print("\n📊 Generating UMI counts...")
+    log.info("📊 Generating UMI counts...")
     umi_df = AlignTools.bam_to_df(bam_file)
     umi_df["count"] = 1
 
@@ -173,12 +174,12 @@ def save_umi_counts(bam_file: Path, output_dir: Path, umis=None):
     series = umi_df[umi_tag_name].value_counts().groupby(level=umi_tag_name).sum().sort_values(ascending=False)
     output_name = umi_tag_name + "_counts"
 
-    print(f"📝 Saving {output_name}...")
+    log.info(f"📝 Saving {output_name}...")
     series.to_csv(output_dir / f"{output_name}.tsv", sep="\t")
     with open(output_dir / f"{output_name}.pkl", "wb") as f:
         pickle.dump(series.to_dict(), f)
 
-    print("\n✅ UMI counts saved!")
+    log.info("✅ UMI counts saved!")
 
 
 def parse_args():
@@ -214,6 +215,7 @@ def dependencies():
     }
 
 
+@log.catch
 def pipeline_main(args):
     output_dir = args.output_parent_dir / "tagging"
     output_dir.mkdir(parents=True, exist_ok=True)

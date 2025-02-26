@@ -17,6 +17,7 @@ from tqdm.auto import tqdm
 import re
 
 from andromeda.phred_tools import NucleotideQuality
+from andromeda.logger import log
 
 IUPAC_DNA = {
     "A": "A",
@@ -182,13 +183,13 @@ def bam_to_tagged_bam(bam_file_path: Path,
                     if 0 < subset_count <= i:
                         break
                 except IndexError as e:
-                    print(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
+                    log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
                     continue
                 except ValueError as e:
-                    print(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
+                    log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
                     continue
                 except Exception as e:
-                    print(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
+                    log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
                     raise e
     summary_string = (
         f"\n"
@@ -204,7 +205,7 @@ def bam_to_tagged_bam(bam_file_path: Path,
                            f"({adj_umi_ref_end - adj_umi_ref_start + 1} nts)\n"
                            f"\t\tDropped {dropped_for_too_long:>8,} UMIs for being too long\n"
                            f"\t\tDropped {dropped_for_too_short:>8,} UMIs for being too short\n")
-    print(summary_string)
+    log.debug(summary_string)
     with open(output_bam_path.with_suffix(".summary.txt"), "w") as summary_file:
         summary_file.write(summary_string)
     return output_bam_path

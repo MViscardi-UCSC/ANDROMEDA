@@ -19,6 +19,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm.auto import tqdm
+from andromeda.logger import log
 
 HELP_TEXT = f"Group UMIs using `umi_tools group` with a given HAMMING edit distance."
 
@@ -61,7 +62,7 @@ def run_umi_tools_group(
     # Let's calculate the edit distance fraction if it wasn't provided
     if edit_frac <= 0 and edit_dist <= 0:
         # if this is the case we'll just default to 0
-        print("No edit distance or fraction provided, defaulting to 0 (perfect match only).")
+        log.info("No edit distance or fraction provided, defaulting to 0 (perfect match only).")
         edit_dist = 0
     elif edit_frac > 0 > edit_dist:
         # In this case we need to grab an example UMI and calculate the edit distance
@@ -71,18 +72,18 @@ def run_umi_tools_group(
                 if umi:
                     break
         edit_dist = int(len(umi) * edit_frac)
-        print(f"Calculated edit distance: {edit_dist} from fraction: {edit_frac}"
-              f" and UMI length: {len(umi)}")
+        log.info(f"Calculated edit distance: {edit_dist} from fraction: {edit_frac}"
+                 f" and UMI length: {len(umi)}")
     elif edit_frac > 0 and edit_dist > 0:
-        print("Both edit distance and fraction provided, using edit distance.")
+        log.info(f"Both edit distance and fraction provided, using provided edit distance of {edit_dist}.")
     
     # Output files
     grouped_bam = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.bam").name
     group_out_tsv = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.tsv").name
     group_log = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.log").name
 
-    print(f"📍 Running UMI grouping with edit distance {edit_dist} "
-          f"(this will not produce any outputs until complete, please be patient!)")
+    log.info(f"📍 Running UMI grouping with edit distance {edit_dist} "
+             f"(this will not produce any outputs until complete, please be patient!)")
     # Construct `umi_tools group` command
     group_call = [
         "umi_tools", "group",
@@ -102,10 +103,10 @@ def run_umi_tools_group(
     elif per_gene and per_contig:
         group_call.extend(["--per-gene", "--per-contig"])
     elif per_contig:
-        print("    🔍 --per-contig grouping option selected, adding --per-gene (umi-tools requires this).")
+        log.info("🔍 --per-contig grouping option selected, adding --per-gene (umi-tools requires this).")
         group_call.extend(["--per-gene", "--per-contig"])
     else:
-        print("    🔍 No grouping option selected, defaulting to per-contig.")
+        log.info("🔍 No grouping option selected, defaulting to per-contig.")
         group_call.extend(["--per-gene", "--per-contig"])
     if per_cell and cell_tag:
         group_call.extend(["--per-cell", "--cell-tag", cell_tag])
@@ -113,14 +114,14 @@ def run_umi_tools_group(
         raise ValueError("per_cell requires a cell_tag to be provided! and vice versa!")
 
     # Run UMI grouping
-    print(f"\n    [DEBUG] Running command:\n    {' '.join(group_call)}")
+    log.debug(f"Running command: {' '.join(group_call)}")
     process = subprocess.Popen(group_call, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     
     # Print stdout and stderr live
     for stdout_line in iter(process.stdout.readline, ""):
-        print(stdout_line, end="")
+        log.info(stdout_line, end="")
     for stderr_line in iter(process.stderr.readline, ""):
-        print(stderr_line, end="")
+        log.info(stderr_line, end="")
     
     process.stdout.close()
     process.stderr.close()
@@ -129,7 +130,7 @@ def run_umi_tools_group(
     # Index BAM
     subprocess.run(["samtools", "index", str(grouped_bam)], check=True)
 
-    print(f"✅ Grouped BAM saved: {grouped_bam}")
+    log.info(f"✅ Grouped BAM saved: {grouped_bam}")
     return grouped_bam
 
 
@@ -157,7 +158,7 @@ def plot_umi_distribution(grouping_tsv: Path, output_dir: Path):
 
     output_plot = output_dir / f"umi_distribution_{edit_dist}.png"
     plt.savefig(output_plot, dpi=300)
-    print(f"📊 Saved plot: {output_plot}")
+    log.info(f"📊 Saved plot: {output_plot}")
     plt.close()
 
 
@@ -199,6 +200,7 @@ def dependencies():
     }
 
 
+@log.catch
 def pipeline_main(args):
     # Run UMI grouping
     grouped_bam = run_umi_tools_group(

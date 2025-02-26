@@ -24,6 +24,7 @@ from typing import List, Tuple
 import argparse
 
 from andromeda.io_utils import load_reference
+from andromeda.logger import log
 
 HELP_TEXT = "Quick tool to select UMI region from reference sequence."
 
@@ -86,7 +87,7 @@ def extract_grouped_sequences(reference_seq: str, padding: int = 5) -> List[Tupl
 def print_ambiguous_regions(grouped_seq_and_regions: List[Tuple[int, int, str]],
                             label_every=10):
     """Prints extracted ambiguous regions in a readable, compact format with position labels."""
-    print("\n🔬 Identified ambiguous regions:\n")
+    log.info("🔬 Identified ambiguous regions:")
     for i, (start, end, extracted_seq) in enumerate(grouped_seq_and_regions):
         # add a space between every base for better readability
         formatted_seq = " ".join(extracted_seq)
@@ -99,10 +100,10 @@ def print_ambiguous_regions(grouped_seq_and_regions: List[Tuple[int, int, str]],
             if idx % label_every == 0:
                 position_labels.append(f"{pos:<{label_every}}")
                 tick_labels.append(f"{tick_icon:<{label_every}}")
-        print(f"📍 Region {i + 1}: {start}-{end}")
-        print("".join(position_labels))
-        print("".join(tick_labels))
-        print(formatted_seq + "\n")
+        log.info(f"📍 Region {i + 1}: {start}-{end}")
+        log.info("".join(position_labels))
+        log.info("".join(tick_labels))
+        log.info(formatted_seq)
 
 
 def get_user_selection(ref_seq: str) -> Tuple[int, int]:
@@ -113,24 +114,24 @@ def get_user_selection(ref_seq: str) -> Tuple[int, int]:
             end = int(input("Enter the end coordinate: "))
 
             if start >= end:
-                print("❌ Start must be less than End. Try again.")
+                log.warning("❌ Start must be less than End. Try again.")
                 continue
             if start < 0 or end > len(ref_seq):
-                print(f"❌ Coordinates must be within the reference sequence length ({len(ref_seq)}). Try again.")
+                log.warning(f"❌ Coordinates must be within the reference sequence length ({len(ref_seq)}). Try again.")
                 continue
 
-            print(f"\n✅ Selected UMI Region: {start} - {end}")
-            print(f"🔍 Sequence: {ref_seq[start:end]}")
+            log.info(f"\n✅ Selected UMI Region: {start} - {end}")
+            log.info(f"🔍 Sequence: {ref_seq[start:end]}")
             confirm = input("Confirm selection? (Y/N): ").strip().lower()
 
             if confirm == "y":
                 return start, end
             else:
-                print("🔄 Let's try again.")
+                log.warning("🔄 Let's try again.")
         except ValueError:
-            print("❌ Invalid input. Please enter numeric values.")
+            log.warning("❌ Invalid input. Please enter numeric values.")
         except KeyboardInterrupt:
-            print("\n🚪 Exiting without selection.")
+            log.error("\n🚪 Exiting without selection.")
             break
     return -1, -1
 
@@ -144,15 +145,15 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
     grouped_regions_and_seq = extract_grouped_sequences(ref_seq, padding=padding)
 
     if not grouped_regions_and_seq:
-        print("❌ No ambiguous regions found! Exiting.")
+        log.error("❌ No ambiguous regions found! Exiting.")
         return
 
     print_ambiguous_regions(grouped_regions_and_seq)
 
     start, end = get_user_selection(ref_seq)
-    print(f"\n🎯 Final UMI Region: ({ref_contig}, {start}, {end})")
-    print(f"🔍 Sequence: {ref_seq[start:end]}")
-    print("✅ Use these coordinates for UMI extraction!\n")
+    log.info(f"🎯 Final UMI Region: ({ref_contig}, {start}, {end})")
+    log.info(f"🔍 Sequence: {ref_seq[start:end]}")
+    log.info("✅ Use these coordinates for UMI extraction!")
     
     save_request = input("Would you like to save these coordinates to a file? (y/N): ").strip().lower()
     if save_request == "y":
@@ -165,18 +166,19 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
             save_path = reference_fasta_PATH.parent / f"{reference_fasta_PATH.name}.targetUMIs.csv"
         current_datetime = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         if save_path.exists():
-            print(f"\n⚠️ File already exists: {save_path}. Appending to it (delete the file if this isn't the goal!).")
+            log.warning(f"⚠️ File already exists: {save_path}. "
+                        f"Appending to it (delete the file if this isn't the goal!).")
             with open(save_path, "a") as file:
                 file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
         else:
             with open(save_path, "w") as file:
                 file.write("ref_contig,start,end,date_time\n")
                 file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
-        print(f"\n📝 Coordinates saved to {save_path.name} in the reference file directory.\n"
-              f"{save_path.absolute()}")
+        log.info(f"📝 Coordinates saved to {save_path.name} in the reference file directory."
+                 f"{save_path.absolute()}")
         return save_path
     else:
-        print("🚪 Exiting without saving.")
+        log.info("🚪 Exiting without saving.")
 
 
 def parse_args():

@@ -16,8 +16,10 @@ python andromeda run-all ref.fasta mapped.bam output_parent_directory
 ```
 """
 import argparse
+import sys
 from importlib import import_module
 from pathlib import Path
+from andromeda.logger import log
 
 MODULES = [
     "andromeda.ref_pos_picker",
@@ -111,71 +113,92 @@ def parse_args():
     return parser.parse_args()
 
 
+def run_all_pipeline(args):
+    outputs = {}
+    assert args.ref_fasta.exists(), f"Reference FASTA file not found: {args.ref_fasta}"
+    assert args.mapped_bam.exists(), f"Mapped BAM file not found: {args.mapped_bam}"
+    assert args.output_parent_dir.exists(), f"Output parent directory not found: {args.output_parent_dir}"
+    assert args.output_parent_dir.is_dir(), f"Output parent directory is not a directory: {args.output_parent_dir}"
+
+    if not args.umi_positions:
+        # Let's look to see if we can find the UMI position TSV file
+        current_suffix = args.ref_fasta.suffix
+        umi_positions = args.ref_fasta.with_suffix(current_suffix + ".targetUMIs.csv")
+        if umi_positions.exists():
+            use_old_umi_pos = input(f"Found existing UMI position TSV file at {umi_positions}. "
+                                    "Use this file? (y/n): ")
+            if use_old_umi_pos.lower() == "y":
+                args.umi_positions = umi_positions
+            else:
+                args.umi_positions = None
+
+    if args.umi_positions:
+        assert args.umi_positions.exists(), f"UMI position TSV file not found: {args.umi_positions}"
+        MODULES.pop(0)  # Remove ref_pos_picker from the list of modules to run
+        # Now we need to artificially add the outputs of ref_pos_picker to the outputs dictionary
+        ref_pos_picker_outputs = {
+            "ref_fasta": args.ref_fasta,
+            "umi_positions": args.umi_positions,
+            "output_parent_dir": args.output_parent_dir
+        }
+        outputs["ref_pos_picker"] = ref_pos_picker_outputs
+    for module_name in MODULES:
+        command_name = module_name.split(".")[-1]
+        module = import_module(module_name)
+
+        module_args = argparse.Namespace(**vars(args))
+        module_args = resolve_dependencies(module_args, command_name, outputs)
+
+        module_args.ref_fasta = args.ref_fasta
+        module_args.output_parent_dir = args.output_parent_dir
+        module_args.mapped_bam = args.mapped_bam
+
+        actions_debug_str = (f"Argument debugging message below:"
+                             f"\n  Calling {module_name} with arguments:")
+        module_actions = [action.dest for action in module.parse_args()._actions]
+        for key, value in vars(module_args).items():
+            if key in module_actions or key == "command":
+                actions_debug_str += f"\n    {key}: {value}"
+        actions_debug_str += "\n  Additional arguments carried over for/from other steps:"
+        for key, value in vars(module_args).items():
+            if key not in module_actions:
+                actions_debug_str += f"\n    {key}: {value}"
+        log.debug(actions_debug_str)
+
+        result = module.pipeline_main(module_args)
+
+        log.success(f"{module_name} completed successfully!")
+
+        if result:
+            log.debug(f"{module_name} returned:", result)
+            outputs[command_name] = result
+
+
+@log.catch
 def main():
     args = parse_args()
-    outputs = {}
-
+    
+    if not hasattr(args, "log_level"):
+        args.log_level = "INFO"
+    
+    log.remove()
+    log.add(sys.stderr, level=args.log_level,
+            format='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> '
+                   '| <level>{level: <8}</level> | '
+                   '<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>',)
+    
     if args.command in [module.split(".")[-1] for module in MODULES]:
+        log.add(f"{args.output_parent_dir}/andromeda_{args.command}" + "_{time}.log", level="TRACE")
         module = import_module(f"andromeda.{args.command}")
         module.pipeline_main(args)
-
     elif args.command == "run-all":
-        
-        assert args.ref_fasta.exists(), f"Reference FASTA file not found: {args.ref_fasta}"
-        assert args.mapped_bam.exists(), f"Mapped BAM file not found: {args.mapped_bam}"
-        assert args.output_parent_dir.exists(), f"Output parent directory not found: {args.output_parent_dir}"
-        assert args.output_parent_dir.is_dir(), f"Output parent directory is not a directory: {args.output_parent_dir}"
-        
-        if not args.umi_positions:
-            # Let's look to see if we can find the UMI position TSV file
-            current_suffix = args.ref_fasta.suffix
-            umi_positions = args.ref_fasta.with_suffix(current_suffix + ".targetUMIs.csv")
-            if umi_positions.exists():
-                use_old_umi_pos = input(f"Found existing UMI position TSV file at {umi_positions}. "
-                                        "Use this file? (y/n): ")
-                if use_old_umi_pos.lower() == "y":
-                    args.umi_positions = umi_positions
-                else:
-                    args.umi_positions = None
-            
-        if args.umi_positions:
-            assert args.umi_positions.exists(), f"UMI position TSV file not found: {args.umi_positions}"
-            MODULES.pop(0)  # Remove ref_pos_picker from the list of modules to run
-            # Now we need to artificially add the outputs of ref_pos_picker to the outputs dictionary
-            ref_pos_picker_outputs = {
-                "ref_fasta": args.ref_fasta,
-                "umi_positions": args.umi_positions,
-                "output_parent_dir": args.output_parent_dir
-            }
-            outputs["ref_pos_picker"] = ref_pos_picker_outputs
-        for module_name in MODULES:
-            command_name = module_name.split(".")[-1]
-            module = import_module(module_name)
-
-            module_args = argparse.Namespace(**vars(args))
-            module_args = resolve_dependencies(module_args, command_name, outputs)
-
-            module_args.ref_fasta = args.ref_fasta
-            module_args.output_parent_dir = args.output_parent_dir
-            module_args.mapped_bam = args.mapped_bam
-
-            print(f"\n[DEBUG] Calling {module_name} with arguments:")
-            module_actions = [action.dest for action in module.parse_args()._actions]
-            for key, value in vars(module_args).items():
-                if key in module_actions or key == "command":
-                    print(f"  {key}: {value}")
-            print(f"\n[DEBUG] Additional arguments carried over for/from other steps:")
-            for key, value in vars(module_args).items():
-                if key not in module_actions:
-                    print(f"  {key}: {value}")
-
-            result = module.pipeline_main(module_args)
-            
-            print(f"\n[DEBUG] {module_name} returned:")
-            print(result)
-            
-            if result:
-                outputs[command_name] = result
+        log.add(f"{args.output_parent_dir}/andromeda_run-all" + "_{time}.log", level="TRACE")
+        run_all_pipeline(args)
+    else:
+        # I want to trigger the more extensive help call (that comes from `run-all --help`) here
+        # This should help with the case where someone doesn't provide a command
+        log.warning("No command provided, please provide a command to run.")
+        parse_args().print_help()
 
 if __name__ == "__main__":
     main()

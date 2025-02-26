@@ -15,8 +15,10 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from typing import Dict, List, Tuple
 import sys
+
 import andromeda.phred_tools as pT
 from andromeda.io_utils import load_reference
+from andromeda.logger import log
 
 HELP_TEXT = f"Compute/collapse consensus sequences for UMI groups in BAM files."
 
@@ -44,7 +46,7 @@ def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, Lis
 
     # Filter groups by size
     umi_groups = {k: v for k, v in umi_groups.items() if len(v) >= min_group_size}
-    print(f"✅ {len(umi_groups)} UMI groups retained (min size: {min_group_size})")
+    log.info(f"✅ {len(umi_groups)} UMI groups retained (min size: {min_group_size})")
     return umi_groups
 
 
@@ -276,14 +278,13 @@ def call_consensus_from_bam(bam_file: Path,
     output_dir = Path(output_parent_dir) / "consensus"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("📂 Loading reference...")
+    log.info("📂 Loading reference...")
     contig, reference_seq = load_reference(reference_fasta)
 
-    print("📍 Extracting UMI groups...")
+    log.info("📍 Extracting UMI groups...")
     umi_groups = extract_umi_groups(bam_file, min_group_size)
 
     if len(umi_groups) == 0:
-        print("")
         raise ValueError("❌ No UMI groups found matching provided cutoffs! Exiting.")
 
     results = []
@@ -311,7 +312,7 @@ def call_consensus_from_bam(bam_file: Path,
     output_file_name = bam_file.stem + "_consensus_sequences.tsv"
     output_file_path = output_dir / output_file_name
     df.to_csv(output_file_path, sep="\t", index=False)
-    print(f"✅ Saved consensus sequences to {output_file_path}")
+    log.info(f"✅ Saved consensus sequences to {output_file_path}")
 
     # plot_consensus_stats(df, output_dir)
     return df, output_file_path
@@ -356,16 +357,16 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
                 read.query_qualities = pT.PhredString(phred_string=row["Phred"]).to_q_scores()
                 read.set_tag("ug", row["group_size"], "i")
                 outf.write(read)
-    print(f"✅ Saved BAM file: {output_bam}")
+    log.info(f"✅ Saved BAM file: {output_bam}")
     pysam.sort("-o", str(output_bam.with_suffix(".sorted.bam")), str(output_bam))
-    print(f"✅ Sorted BAM file: {output_bam.with_suffix('.sorted.bam')}")
+    log.info(f"✅ Sorted BAM file: {output_bam.with_suffix('.sorted.bam')}")
     pysam.index(str(output_bam.with_suffix('.sorted.bam')))
-    print(f"✅ Indexed BAM file: {output_bam.with_suffix('.sorted.bam')}.bai")
+    log.info(f"✅ Indexed BAM file: {output_bam.with_suffix('.sorted.bam')}.bai")
     output_sam = output_bam.with_suffix('.sorted.bam').with_suffix(".sam")
     output_sam.touch()
     pysam.view("-ho", str(output_sam), str(output_bam.with_suffix('.sorted.bam')),
                save_stdout=str(output_sam))
-    print(f"✅ Saved SAM file: {output_bam.with_suffix('.sam')}")
+    log.info(f"✅ Saved SAM file: {output_bam.with_suffix('.sam')}")
     return output_bam
 
 
@@ -386,7 +387,7 @@ def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
 
     output_plot = output_dir / "consensus_quality.png"
     plt.savefig(output_plot, dpi=300)
-    print(f"📊 Saved plot: {output_plot}")
+    log.info(f"📊 Saved plot: {output_plot}")
     plt.close()
 
 
@@ -432,6 +433,7 @@ def dependencies():
     }
 
 
+@log.catch
 def pipeline_main(args: argparse.Namespace):
     call_consensus_and_plot(args)
 
