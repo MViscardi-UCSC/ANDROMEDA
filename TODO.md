@@ -97,13 +97,13 @@ This document outlines the development plan for implementing ANDROMEDA as a **mo
    - Process only reads from the specified contig.
    - OR process all contigs in the BAM file.
 
-- [ ] **8. Implement `config.py` for Config Management**  
-   - Store default parameters in **JSON/YAML**.  
-   - Allow user overrides via CLI options.  
-
-- [ ] **9. Add Logging (`logging_utils.py`)**  
+- [ ] **8. Add Logging (`logging_utils.py`)**  
    - Implement logging to track progress/errors.  
    - Replace `print()` statements with structured logs.  
+
+- [ ] **9. Implement `config.py` for Config Management**  
+   - Store default parameters in **JSON/YAML**.  
+   - Allow user overrides via CLI options.  
 
 ---
 
