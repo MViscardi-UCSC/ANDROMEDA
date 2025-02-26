@@ -39,7 +39,6 @@ def get_dependencies():
     return dependencies
 
 def resolve_dependencies(args, module_name, outputs):
-    # TODO: Make sure this is working as expected!!!!
     dependencies = get_dependencies()
     if module_name in dependencies:
         required_inputs = dependencies[module_name]
@@ -219,6 +218,7 @@ def main():
         # This should help with the case where someone doesn't provide a command
         log.warning("No command provided, please provide a command to run.")
         parse_args().print_help()
+
 
 if __name__ == "__main__":
     main()
