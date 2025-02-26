@@ -194,19 +194,19 @@ def bam_to_tagged_bam(bam_file_path: Path,
                     raise e
             log.trace(f"Finished extracting UMIs from {bam_file_path} and writing to {output_bam_path}")
     summary_string = (
-        f"\n"
-        f"Extracted {len(umi_output_set):>8,} unique UMIs from {i + 1:>8,} reads\n"
-        f"Wrote     {umi_success_count:>8,} reads to {output_bam_path.name}\n"
-        f"Dropped   {umi_drop_count:>8,} UMIs for having too many deletions, insertions, or mismatches\n"
-        f"Breakdown (reads can fit into multiple categories): \n"
-        f"\tDropped {dropped_for_del:>8,} UMIs for having too many deletions (>{max_del_in_umi})\n"
-        f"\tDropped {dropped_for_ins:>8,} UMIs for having too many insertions (>{max_ins_in_umi})\n"
-        f"\tDropped {dropped_for_mismatch:>8,} UMIs for having too many mismatches (>{max_iupac_mismatches})\n")
+        f"Summary of UMI Extraction below:\n"
+        f"  Extracted {len(umi_output_set):>8,} unique UMIs from {i + 1:>8,} reads\n"
+        f"  Wrote     {umi_success_count:>8,} reads to {output_bam_path.name}\n"
+        f"  Dropped   {umi_drop_count:>8,} UMIs for having too many deletions, insertions, or mismatches\n"
+        f"  Breakdown (reads can fit into multiple categories): \n"
+        f"    Dropped {dropped_for_del:>8,} UMIs for having too many deletions (>{max_del_in_umi})\n"
+        f"    Dropped {dropped_for_ins:>8,} UMIs for having too many insertions (>{max_ins_in_umi})\n"
+        f"    Dropped {dropped_for_mismatch:>8,} UMIs for having too many mismatches (>{max_iupac_mismatches})\n")
     if restrict_to_length:
-        summary_string += (f"\tDropped {dropped_for_length:>8,} UMIs for not being the expected length "
+        summary_string += (f"    Dropped {dropped_for_length:>8,} UMIs for not being the expected length "
                            f"({adj_umi_ref_end - adj_umi_ref_start + 1} nts)\n"
-                           f"\t\tDropped {dropped_for_too_long:>8,} UMIs for being too long\n"
-                           f"\t\tDropped {dropped_for_too_short:>8,} UMIs for being too short\n")
+                           f"      Dropped {dropped_for_too_long:>8,} UMIs for being too long\n"
+                           f"      Dropped {dropped_for_too_short:>8,} UMIs for being too short\n")
     log.debug(summary_string)
     with open(output_bam_path.with_suffix(".summary.txt"), "w") as summary_file:
         summary_file.write(summary_string)
