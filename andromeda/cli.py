@@ -22,6 +22,7 @@ from pathlib import Path
 
 from andromeda.logger import log
 from andromeda.__version__ import __version__
+from andromeda.big_text import big_text
 
 MODULES = [
     "andromeda.ref_pos_picker",
@@ -213,20 +214,32 @@ def run_all_pipeline(args):
 
 @log.catch
 def main():
+    print(big_text)
     args = parse_args()
     
     log.remove()
     log.add(sys.stderr, level=args.log_level,
             format='<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> '
                    '| <level>{level: <8}</level> | '
-                   '<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>',)
+                   '<cyan>{name}</cyan>:<cyan>{function}</cyan> - '
+                   '<level>{message}</level>')
     
     if args.command in [module.split(".")[-1] for module in MODULES]:
         log.add(f"{args.output_parent_dir}/andromeda_{args.command}" + "_{time}.log", level=args.log_file_level)
+        log.success(f"Starting ANDROMEDA {args.command} pipeline!")
+        log.success(f"CLI called: {' '.join(sys.argv)}")
+        log.success(f"Log level: {args.log_level}")
+        log.success(f"Log file level: {args.log_file_level}")
+        log.success(f"Parsed Arguments: {args}")
         module = import_module(f"andromeda.{args.command}")
         module.pipeline_main(args)
     elif args.command == "run-all":
         log.add(f"{args.output_parent_dir}/andromeda_run-all" + "_{time}.log", level=args.log_file_level)
+        log.success(f"Starting full run of ANDROMEDA pipeline!")
+        log.success(f"CLI called: {' '.join(sys.argv)}")
+        log.success(f"Log level: {args.log_level}")
+        log.success(f"Log file level: {args.log_file_level}")
+        log.success(f"Parsed Arguments: {args}")
         run_all_pipeline(args)
     else:
         # I want to trigger the more extensive help call (that comes from `run-all --help`) here
