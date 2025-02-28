@@ -349,7 +349,7 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
         header['PG'].append(add_to_header)
         # pprint(header)
 
-        ref_id_to_contig_dict = build_ref_id_to_contig_dict(output_bam)
+        ref_id_to_contig_dict = build_ref_id_to_contig_dict(template_bam)
         contig_to_ref_id_dict = {v: k for k, v in ref_id_to_contig_dict.items()}
         
         with pysam.AlignmentFile(output_bam, "wb",
