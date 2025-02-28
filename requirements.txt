@@ -4,3 +4,5 @@ biopython~=1.85
 tqdm~=4.67.1
 seaborn~=0.13.2
 matplotlib~=3.10.0
+loguru~=0.7.3
+prompt_toolkit~=3.0.50

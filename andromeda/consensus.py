@@ -354,7 +354,6 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
         
         with pysam.AlignmentFile(output_bam, "wb",
                                  header=header,
-                                 # template=template,
                                  ) as outf:
             for _, row in df.iterrows():
                 assert len(row["Consensus"]) == len(row["Phred"]), "Mismatched lengths of sequence and phred!"
