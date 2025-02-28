@@ -117,5 +117,8 @@ def barplot_contig_counts(bam_file: Path):
 
 
 if __name__ == '__main__':
-    test_bam = Path("../examples/JA-NP-096/consensus/250218_JANP-096_LT.AtoG.sorted.tagged.grouped_3dist.consensus_sequences.sorted.bam")
+    test_bam = Path(
+        "../examples/JA-NP-096/consensus/"
+        "250218_JANP-096_LT.AtoG.sorted.tagged.grouped_2dist.consensus_sequences.sorted.bam"
+    )
     barplot_contig_counts(test_bam)
