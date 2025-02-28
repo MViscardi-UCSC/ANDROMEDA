@@ -91,7 +91,8 @@ def parse_args():
     for module_name in MODULES:
         module = import_module(module_name)
         command_name = module_name.split(".")[-1]
-        subcommand = subparsers.add_parser(command_name, help=f"Run {command_name} module")
+        help_text = module.HELP_TEXT if module.HELP_TEXT else f"Run {command_name} module"
+        subcommand = subparsers.add_parser(command_name, help=help_text)
 
         # Add global arguments explicitly for help text visibility
         global_parser().print_help = subcommand.print_help
