@@ -154,31 +154,26 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
     log.info(f"🎯 Final UMI Region: ({ref_contig}, {start}, {end})")
     log.info(f"🔍 Sequence: {ref_seq[start:end]}")
     log.info("✅ Use these coordinates for UMI extraction!")
-    
-    save_request = input("Would you like to save these coordinates to a file? (y/N): ").strip().lower()
-    if save_request == "y":
-        if output_parent_dir:
-            assert Path(output_parent_dir).is_dir(), f"Output parent directory not found: {output_parent_dir}"
-            output_dir = Path(output_parent_dir) / "references"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            save_path = output_dir / f"{reference_fasta_PATH.name}.targetUMIs.csv"
-        else:
-            save_path = reference_fasta_PATH.parent / f"{reference_fasta_PATH.name}.targetUMIs.csv"
-        current_datetime = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        if save_path.exists():
-            log.warning(f"⚠️ File already exists: {save_path}. "
-                        f"Appending to it (delete the file if this isn't the goal!).")
-            with open(save_path, "a") as file:
-                file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
-        else:
-            with open(save_path, "w") as file:
-                file.write("ref_contig,start,end,date_time\n")
-                file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
-        log.info(f"📝 Coordinates saved to {save_path.name} in the reference file directory."
-                 f"{save_path.absolute()}")
-        return save_path
+    if output_parent_dir:
+        assert Path(output_parent_dir).is_dir(), f"Output parent directory not found: {output_parent_dir}"
+        output_dir = Path(output_parent_dir) / "references"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        save_path = output_dir / f"{reference_fasta_PATH.name}.targetUMIs.csv"
     else:
-        log.info("🚪 Exiting without saving.")
+        save_path = reference_fasta_PATH.parent / f"{reference_fasta_PATH.name}.targetUMIs.csv"
+    current_datetime = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    if save_path.exists():
+        log.warning(f"⚠️ File already exists: {save_path}. "
+                    f"Appending to it (delete the file if this isn't the goal!).")
+        with open(save_path, "a") as file:
+            file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
+    else:
+        with open(save_path, "w") as file:
+            file.write("ref_contig,start,end,date_time\n")
+            file.write(f"{ref_contig},{start},{end},{current_datetime}\n")
+    log.info(f"📝 Coordinates saved to {save_path.name} in the reference file directory."
+             f"{save_path.absolute()}")
+    return save_path
 
 
 def parse_args():
