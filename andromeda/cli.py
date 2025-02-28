@@ -144,7 +144,7 @@ def run_all_pipeline(args):
     assert args.output_parent_dir.exists(), f"Output parent directory not found: {args.output_parent_dir}"
     assert args.output_parent_dir.is_dir(), f"Output parent directory is not a directory: {args.output_parent_dir}"
     
-    log.success("Starting ANDROMEDA! Required files found, starting pipeline.")
+    log.success("Required files found, starting pipeline.")
 
     if not args.umi_positions:
         # Let's look to see if we can find the UMI position TSV file
