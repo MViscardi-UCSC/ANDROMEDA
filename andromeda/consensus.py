@@ -313,6 +313,7 @@ def call_consensus_from_bam(bam_file: Path,
             "Phred": consensus_phred_trimmed,
             "CIGAR": consensus_cigar,
             "start_pos": consensus_start,
+            "contig": contig,
             **stats})
     log.trace(f"Finished calling consensus sequences tqdm loop (total items processed: {len(results)})")
     
@@ -347,6 +348,10 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
                           "CL": " ".join(sys.argv)}
         header['PG'].append(add_to_header)
         # pprint(header)
+
+        ref_id_to_contig_dict = build_ref_id_to_contig_dict(output_bam)
+        contig_to_ref_id_dict = {v: k for k, v in ref_id_to_contig_dict.items()}
+        
         with pysam.AlignmentFile(output_bam, "wb",
                                  header=header,
                                  # template=template,
@@ -359,7 +364,7 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
                 read.flag = 0
                 read.cigarstring = row["CIGAR"]
                 read.reference_start = row["start_pos"]
-                read.reference_id = 0
+                read.reference_id = contig_to_ref_id_dict[row["contig"]]
                 read.mapping_quality = 20  # Arbitrary for now
                 read.template_length = len(read.query_sequence)
                 read.query_qualities = pT.PhredString(phred_string=row["Phred"]).to_q_scores()
@@ -377,6 +382,18 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
     log.info(f"✅ Saved SAM file: {output_bam.with_suffix('.sam')}")
     return output_bam
 
+
+def build_ref_id_to_contig_dict(bam_file: Path) -> Dict[str, str]:
+    """
+    Builds a dictionary of reference IDs to contig names.
+    Args:
+        bam_file (Path): Path to BAM file.
+    Returns:
+        Dict[str, str]: Dictionary of reference IDs to contig names.
+    """
+    with pysam.AlignmentFile(bam_file, "rb") as bam:
+        ref_dict = {ref_id: ref_name for ref_id, ref_name in enumerate(bam.references)}
+    return ref_dict
 
 def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
     """Generates a plot showing mismatch and confidence rates."""

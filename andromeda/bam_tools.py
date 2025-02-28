@@ -68,6 +68,7 @@ def histogram_tag_values(bam_file: Path, tag: str) -> Tuple[List[int], List[int]
     plt.show()
     return list(unique_values), value_counts
 
+
 def scatter_tag_v_tag(bam_file: Path, x_tag: str, y_tag: str) -> None:
     """
     Create a scatter plot of two BAM tags.
@@ -91,14 +92,30 @@ def scatter_tag_v_tag(bam_file: Path, x_tag: str, y_tag: str) -> None:
     plt.ylabel(y_tag)
     plt.show()
 
+
+def barplot_contig_counts(bam_file: Path):
+    """
+    Create a barplot of the number of reads per contig in a BAM file.
+
+    Args:
+        bam_file (Path): Path to BAM file.
+    """
+    contig_counts = {}
+    with pysam.AlignmentFile(bam_file, "rb") as bam:
+        total_reads = bam.mapped + bam.unmapped
+        for read in tqdm(bam, total=total_reads, desc="Counting reads per contig"):
+            contig = read.reference_name
+            if contig not in contig_counts:
+                contig_counts[contig] = 1
+            else:
+                contig_counts[contig] += 1
+    sea.barplot(x=list(contig_counts.keys()), y=list(contig_counts.values()))
+    plt.title(f"Reads per contig\n[{bam_file.name}]")
+    plt.xlabel("Contig")
+    plt.ylabel("Read count")
+    plt.show()
+
+
 if __name__ == '__main__':
-    test_bam = Path("../examples/3RACE/umi_grouping/ont3RACE_PCR8.sorted.calmd.tagged.failed.bam")
-    tags_to_test = [
-        # "um",
-        "ul",
-        # "ud",
-        # "ui",
-    ]
-    for tag in tags_to_test:
-        histogram_tag_values(test_bam, tag)
-    # scatter_tag_v_tag(test_bam, "ui", "ud")
+    test_bam = Path("../examples/JA-NP-096/consensus/250218_JANP-096_LT.AtoG.sorted.tagged.grouped_3dist.consensus_sequences.sorted.bam")
+    barplot_contig_counts(test_bam)
