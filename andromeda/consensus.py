@@ -246,6 +246,7 @@ def create_consensus_cigar(match_str, collapse_X_to_M=False) -> Tuple[str, int]:
     # The match_str is a long list of values (M, X, D, or space) that we can use to build a CIGAR string
     if collapse_X_to_M:
         match_str = match_str.replace("X", "M")
+    match_str = match_str.replace(" ", "D")
     cigared_str = []
     current_char_count = 0
     current_char = None
@@ -253,12 +254,17 @@ def create_consensus_cigar(match_str, collapse_X_to_M=False) -> Tuple[str, int]:
         if char == current_char:
             current_char_count += 1
         else:
-            if current_char is not None and current_char != " ":
+            if current_char is not None:
                 cigared_str.append(f"{current_char_count}{current_char}")
             current_char = char
             current_char_count = 1
-    if current_char is not None and current_char_count > 0 and current_char != " ":
+    if current_char is not None and current_char_count > 0:
         cigared_str.append(f"{current_char_count}{current_char}")
+    # Let's remove the leading "D" if it's there
+    if cigared_str[0][-1] == "D":
+        cigared_str = cigared_str[1:]
+    if cigared_str[-1][-1] == "D":
+        cigared_str = cigared_str[:-1]
     return "".join(cigared_str), match_str.index("M")
 
 
