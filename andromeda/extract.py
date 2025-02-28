@@ -23,26 +23,24 @@ import re
 from tqdm.auto import tqdm
 
 from andromeda import alignment_tools as AlignTools
-from andromeda.io_utils import load_reference
+from andromeda.io_utils import load_reference_contigs_to_dict, load_umi_positions
 from andromeda.logger import log
 
 HELP_TEXT = f"Extract UMIs from mapped reads (from a BAM file) based on aligned reference positions."
 
-
-def load_umi_positions(umi_positions_file: Path) -> Dict[str, List[Tuple[int, int]]]:
-    """Loads UMI positions from a TSV file and converts them into a dictionary."""
-    contig_df = pd.read_csv(umi_positions_file)
-    # Columns = "ref_contig", "start", "end", "date_time"
-
-    output_dict = {}  # Dict of umi_positions per contig
-    for index, row in contig_df.set_index("ref_contig").iterrows():
-        log.info(f"📍 Region {index}: {row['start']}-{row['end']}")
-        if index not in output_dict:
-            output_dict[index] = [(0, (row["start"], row["end"]))]
-        else:
-            prev_index = output_dict[index][-1][0]
-            output_dict[index].append((prev_index + 1, (row["start"], row["end"])))
-    return output_dict
+KNOWN_SAM_TAGS = [
+    "AM", "AS", "BC", "BQ", "BZ", "CB", "CC",
+    "CG", "CM", "CO", "CP", "CQ", "CR", "CS",
+    "CT", "CY", "E2", "FI", "FS", "FZ", "GC",
+    "GQ", "GS", "H0", "H1", "H2", "HI", "IH",
+    "LB", "MC", "MD", "MF", "MI", "ML", "MM",
+    "MQ", "NH", "NM", "OA", "OC", "OP", "OQ",
+    "OX", "PG", "PQ", "PT", "PU", "Q2", "QT",
+    "QX", "R2", "RG", "RT", "RX", "S2", "SA",
+    "SM", "SQ", "TC", "TS", "U2", "UQ", "X?",
+    "Y?", "Z?",
+]
+OUR_UMI_DEFAULT_TAGS = ["ud", "ui", "um", "ul"]
 
 
 def extract_umis_from_bam(
@@ -55,103 +53,86 @@ def extract_umis_from_bam(
         mismatch_tolerance: int = 0,
         force: bool = False,
         umi_tag: str = "uM",
-):
+) -> Path:
     """Extracts UMIs from a BAM file and tags reads with UMI sequences."""
+    # TODO: We are not currently handling multiple UMIs per contig, this is a smaller issue.
 
+    assert umi_tag not in OUR_UMI_DEFAULT_TAGS, \
+        (f"❌ UMI tag '{umi_tag}' already in use by our added tags! "
+         f"Please choose a different tag or use the default 'uM'.")
+    assert umi_tag not in KNOWN_SAM_TAGS, \
+        (f"❌ UMI tag '{umi_tag}' already in use as a default SAM tag! "
+         f"Please choose a different tag or use the default 'uM'.")
+    
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    log.info("📂 Loading reference sequence...")
-    contig, ref_seq = load_reference(reference_file)
+    log.info("📂 Loading reference sequences...")
+    ref_dict = load_reference_contigs_to_dict(reference_file)
 
     log.info("🔍 Loading UMI positions...")
     contig_umi_positions = load_umi_positions(umi_positions_file)
+    
+    # Let's simlify the contig_umi_positions dict to only the first umi_option for each contig
+    log.info("🔍 Simplifying UMI positions to only a single option for each contig...")
+    simplified_contig_umi_positions = {}
+    for contig, umi_positions_list in contig_umi_positions.items():
+        if len(umi_positions_list) > 1:
+            log.warning(f"🚨 Multiple UMI positions found for contig {contig}!")
+            log.warning(f"🚨 Only the first UMI position will be used.")
+        simplified_contig_umi_positions[contig] = umi_positions_list[0]
+    contig_umi_positions = simplified_contig_umi_positions
+    umi_pos_dict = contig_umi_positions
+    
+    if flanking_seq_to_capture > 0:
+        log.info(f"🔍 Capturing flanking sequence of {flanking_seq_to_capture} bases around UMI positions...")
+        # We need to update the UMI positions to include the flanking sequence
+        for contig, (index, (start, end)) in umi_pos_dict.values():
+            umi_pos_dict[contig] = (index(start - flanking_seq_to_capture, end + flanking_seq_to_capture))
+    
+    # We should do an "inner merge" of the two dictionaries to ensure that we only process contigs that have both
+    # reference sequences and UMI positions
+    umi_pos_dict = {contig: umi_pos_dict[contig] for contig in ref_dict.keys() if contig in umi_pos_dict}
+    ref_dict = {contig: ref_dict[contig] for contig in umi_pos_dict.keys()}
+    if not umi_pos_dict or not ref_dict:
+        raise ValueError("No contigs found in both the reference file and the UMI positions file!")
 
-    if contig not in contig_umi_positions:
-        raise KeyError(f"❌ Contig '{contig}' not found in {umi_positions_file}")
-
-    # TODO: Ability to check multiple contigs one by one.
-    umi_positions_list = contig_umi_positions[contig]
-    log.info(f"✅ Found {len(umi_positions_list)} UMI position sets for contig {contig}")
-
-    output_bams = []
-
-    log.info("🛠 Processing BAM file...")
-    umi_positions_with_flanking = []
-    for umi_index, umi_positions in umi_positions_list:
-        umi_positions_with_flanking.append((umi_index,
-                                            )
-                                           )
-    if len(umi_positions_list) > 1:
-        log.info(f"📝 Tagging multiple UMIs from the same contig ({contig})...")
-        multiple_umis_per_contig = True
-    else:
-        log.info(f"📝 Tagging single UMI from contig {contig}...")
-        multiple_umis_per_contig = False
-    for umi_index, umi_positions in umi_positions_list:
-        flank_adjusted_positions = (umi_positions[0] - flanking_seq_to_capture,
-                                    umi_positions[1] + flanking_seq_to_capture)
-        log.info(f"📍 Ready to extract UMI at position {umi_index + 1}: ({umi_positions[0]}-{flanking_seq_to_capture},"
-                 f" {umi_positions[1]}+{flanking_seq_to_capture})")
-        log.info(f"🔍 Sequence: "
-                 f"{ref_seq[flank_adjusted_positions[0]:flank_adjusted_positions[1]+1]}")
-        if not force:
-            confirm_selection = input("    Confirm selection? (y/N): ").strip().lower()
-            if confirm_selection != "y":
-                log.info("    🔄 Skipping this UMI.")
-                continue
-            else:
-                log.info("    ✅ UMI confirmed.")
-
-        if multiple_umis_per_contig:
-            # If multiple UMIs per contig, add a suffix to the BAM file
-            suffix = f".tagged_u{umi_index + 1}.bam"
-            # And changed the tags to be numbered in case you want to merge them later
-            tag_dict = {
-                "umi_sequence": f"u{umi_index + 1}",
-                "deletion_count": f"d{umi_index + 1}",
-                "insertion_count": f"i{umi_index + 1}",
-                "mismatch_count": f"m{umi_index + 1}",
-                "umi_length": f"l{umi_index + 1}",
-            }
-        else:
-            suffix = ".tagged.bam"
-            tag_dict = {
-                "umi_sequence": umi_tag,
-                "deletion_count": "ud",
-                "insertion_count": "ui",
-                "mismatch_count": "um",
-                "umi_length": "ul",
-            }
-            if umi_tag != "uM":
-                assert umi_tag not in [v for k, v in tag_dict.items() if k != "umi_sequence"], \
-                    (f"❌ UMI tag '{umi_tag}' already in use! "
-                     f"Please choose a different tag or use the default 'uM'.")
-
-        tagged_bam = AlignTools.bam_to_tagged_bam(
-            bam_file, contig, ref_seq,
-            umi_positions[0], umi_positions[1],
-            save_dir=output_dir,
-            flanking_seq_to_capture=flanking_seq_to_capture,
-            bam_tag_dict=tag_dict,
-            subset_count=subset_count,
-            save_suffix=suffix,
-            max_del_in_umi=0,  # Keep this
-            max_ins_in_umi=0,  # And keep this, b/c it allows for easier downstream analysis
-            max_iupac_mismatches=mismatch_tolerance,  # This could potentially be changed
-            restrict_to_length=True,  # The 0 del and 0 ins pretty much forces this already
-        )
-        output_bams.append(tagged_bam)
-
-        # Index the BAM file after each tagging step
-        subprocess.run(["samtools", "index", str(tagged_bam)], check=True)
-        # Convert the final BAM file to SAM for easier reading
-        subprocess.run(["samtools", "view", str(tagged_bam),
-                        "-o", str(tagged_bam.with_suffix(".sam"))], check=True)
-        log.info(f"✅ UMI {umi_index + 1} extraction complete! Saved to:")
-        log.info(f"📁 {tagged_bam}")
-
+    tag_dict = {
+        "umi_sequence": umi_tag,
+        "deletion_count": "ud",
+        "insertion_count": "ui",
+        "mismatch_count": "um",
+        "umi_length": "ul",
+    }
+    
+    save_path = output_dir / f"{bam_file.stem}.tagged.bam"
+    
+    tagged_bam = AlignTools.bam_to_tagged_bam(
+        bam_file_path=bam_file,
+        ref_seq_dict=ref_dict,
+        umi_dict=umi_pos_dict,
+        save_path=save_path,
+        bam_tag_dict=tag_dict,
+        subset_count=subset_count,
+        max_del_in_umi=0,  # Keep this
+        max_ins_in_umi=0,  # And keep this, b/c it allows for easier downstream analysis
+        max_iupac_mismatches=mismatch_tolerance,  # This could potentially be changed
+        restrict_to_length=True,  # The 0 del and 0 ins pretty much forces this already
+    )
+    # Sort the BAM file after tagging
+    log.debug(f"🔃 Sorting tagged BAM file: {tagged_bam}")
+    subprocess.run(["samtools", "sort", str(tagged_bam), "-o", str(tagged_bam)], check=True)
+    # Index the BAM file after sorting step
+    log.debug(f"🔃 Indexing sorted BAM file: {tagged_bam}")
+    subprocess.run(["samtools", "index", str(tagged_bam)], check=True)
+    # Convert the final BAM file to SAM for easier reading
+    sorted_tagged_sam = tagged_bam.with_suffix(".sam")
+    log.debug(f"🔃 Converting sorted BAM file to SAM: {tagged_bam}")
+    subprocess.run(["samtools", "view", str(tagged_bam), "-o", str(sorted_tagged_sam)], check=True)
+    log.info(f"📁 Finished saving and processing tagged BAM file and its derivatives.")
+    
     log.info("✅ UMI extraction complete!")
-    return output_bams
+    
+    return save_path
 
 
 def save_umi_counts(bam_file: Path, output_dir: Path, umis=None):
@@ -173,10 +154,15 @@ def save_umi_counts(bam_file: Path, output_dir: Path, umis=None):
         umi_tag_name = "uM"  # Default tag
     series = umi_df[umi_tag_name].value_counts().groupby(level=umi_tag_name).sum().sort_values(ascending=False)
     output_name = umi_tag_name + "_counts"
+    
+    out_tsv = output_dir / f"{output_name}.tsv"
+    out_pickle = output_dir / f"{output_name}.pkl"
 
-    log.info(f"📝 Saving {output_name}...")
-    series.to_csv(output_dir / f"{output_name}.tsv", sep="\t")
-    with open(output_dir / f"{output_name}.pkl", "wb") as f:
+    log.debug(f"📝 Saving {out_tsv}...")
+    series.to_csv(out_tsv, sep="\t")
+    
+    log.debug(f"📝 Saving {out_pickle}...")
+    with open(out_pickle, "wb") as f:
         pickle.dump(series.to_dict(), f)
 
     log.info("✅ UMI counts saved!")
@@ -222,7 +208,7 @@ def pipeline_main(args):
     assert args.umi_positions.exists(), \
         (f"UMI positions file not found!\n"
          f"Looked here: {args.umi_positions}")
-    tagged_bams = extract_umis_from_bam(
+    tagged_bam = extract_umis_from_bam(
         bam_file=args.mapped_bam,
         reference_file=args.ref_fasta,
         umi_positions_file=args.umi_positions,
@@ -233,16 +219,14 @@ def pipeline_main(args):
         force=args.extraction_do_not_confirm,
         umi_tag=args.store_umi_tag,
     )
-    for bam_path in tagged_bams:
-        save_umi_counts(bam_path, output_dir)
+    
+    save_umi_counts(tagged_bam, output_dir)
+    
     pass_fwd_dict = {
         "output_parent_dir": args.output_parent_dir,
         "load_umi_tag": args.store_umi_tag,
+        "tagged_bam": tagged_bam,
     }
-    if len(tagged_bams) == 1:
-        pass_fwd_dict["tagged_bam"] = tagged_bams[0]
-    else:
-        raise NotImplementedError("Multiple tagged BAMs not yet supported.")
     return pass_fwd_dict
 
 

@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import List, Tuple
 import argparse
 
-from andromeda.io_utils import load_reference
+from andromeda.io_utils import load_single_reference_contig, load_reference_contigs_to_dict
 from andromeda.logger import log
 
 HELP_TEXT = "Quick tool to select UMI region from reference sequence."
@@ -140,7 +140,7 @@ def run_umi_region_picker(reference_fasta_path: str, contig: str = None, padding
                           output_parent_dir: str = None) -> Path:
     """Runs the CLI-based UMI region selection."""
     reference_fasta_PATH = Path(reference_fasta_path)
-    ref_contig, ref_seq = load_reference(reference_fasta_path, contig=contig)
+    ref_contig, ref_seq = load_single_reference_contig(reference_fasta_path, contig=contig)
     
     grouped_regions_and_seq = extract_grouped_sequences(ref_seq, padding=padding)
 
@@ -200,10 +200,12 @@ def dependencies():
 
 
 def pipeline_main(args):
-    umi_positions = run_umi_region_picker(args.ref_fasta,
-                                          contig=args.contig,
-                                          padding=args.disp_padding,
-                                          output_parent_dir=args.output_parent_dir)
+    refs_dict = load_reference_contigs_to_dict(args.ref_fasta)
+    for contig, seq in refs_dict.items():
+        umi_positions = run_umi_region_picker(args.ref_fasta,
+                                              contig=contig,
+                                              padding=args.disp_padding,
+                                              output_parent_dir=args.output_parent_dir)
     pass_fwd_dict = {
         "ref_fasta": args.ref_fasta,
         "umi_positions": umi_positions,

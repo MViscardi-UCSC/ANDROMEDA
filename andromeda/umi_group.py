@@ -82,8 +82,7 @@ def run_umi_tools_group(
     group_out_tsv = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.tsv").name
     group_log = output_dir / tagged_bam.with_suffix(f".grouped_{edit_dist}dist.log").name
 
-    log.info(f"📍 Running UMI grouping with edit distance {edit_dist} "
-             f"(this will not produce any outputs until complete, please be patient!)")
+    log.info(f"📍 Running UMI grouping with edit distance {edit_dist}")
     # Construct `umi_tools group` command
     group_call = [
         "umi_tools", "group",
@@ -115,6 +114,7 @@ def run_umi_tools_group(
 
     # Run UMI grouping
     log.debug(f"Running command: {' '.join(group_call)}")
+    log.warning(f"Starting command, this will not produce any outputs until complete, please be patient!")
     process = subprocess.Popen(group_call, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     
     # Print stdout and stderr live

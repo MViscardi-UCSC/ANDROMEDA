@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 import sys
 
 import andromeda.phred_tools as pT
-from andromeda.io_utils import load_reference
+from andromeda.io_utils import load_single_reference_contig, load_reference_contigs_to_dict
 from andromeda.logger import log
 
 HELP_TEXT = f"Compute/collapse consensus sequences for UMI groups in BAM files."
@@ -48,7 +48,9 @@ def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, Lis
 
     # Filter groups by size
     umi_groups = {k: v for k, v in umi_groups.items() if len(v) >= min_group_size}
-    log.info(f"✅ {len(umi_groups)} UMI groups retained (min size: {min_group_size})")
+    total_reads = sum([len(v) for v in umi_groups.values()])
+    log.info(f"✅ {len(umi_groups)} UMI groups retained (min size: {min_group_size}). "
+             f"These contain {total_reads} reads.")
     return umi_groups
 
 
@@ -281,7 +283,7 @@ def call_consensus_from_bam(bam_file: Path,
     output_dir.mkdir(parents=True, exist_ok=True)
 
     log.info("📂 Loading reference...")
-    contig, reference_seq = load_reference(reference_fasta)
+    ref_dict = load_reference_contigs_to_dict(reference_fasta)
 
     log.info("📍 Extracting UMI groups...")
     umi_groups = extract_umi_groups(bam_file, min_group_size)
@@ -293,8 +295,10 @@ def call_consensus_from_bam(bam_file: Path,
     log.trace("Started calling consensus sequences tqdm loop.")
     consensus_iterator = tqdm(umi_groups.items(), desc="Calling consensus")
     for umi_id, reads in consensus_iterator:
-        # consensus_iterator.set_description(f"🔬 Calling consensus (uID: {umi_id}, #: {len(reads)})")
-        consensus_iterator.set_postfix_str(f"Current uID: {umi_id:0>5}; Members: {len(reads):>4}")
+        contig = reads[0].reference_name
+        reference_seq = ref_dict[contig]
+        
+        consensus_iterator.set_postfix_str(f"Current Contig & uID: {contig}-{umi_id:0>5}; Members: {len(reads):>4}")
         consensus_seq, consensus_phred, match_str, stats = compute_majority_consensus(reads, reference_seq,
                                                                                       calc_avg_phreds=calc_avg_phreds)
         consensus_cigar, consensus_start = create_consensus_cigar(match_str,
