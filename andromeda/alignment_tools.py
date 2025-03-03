@@ -9,6 +9,7 @@ It can be found here:
 And from my codebase in the `cs_parsing.py` file:
     /data16/marcus/working/240118_COMETm_TadUMICollapsing/COMETm/mapBased/cs_parsing.py
 """
+
 import pysam
 import pandas as pd
 from pathlib import Path
@@ -34,21 +35,23 @@ IUPAC_DNA = {
     "D": "AGT",
     "H": "ACT",
     "V": "ACG",
-    "N": "ACGT"
+    "N": "ACGT",
 }
 
 
-def bam_to_tagged_bam(bam_file_path: Path,
-                      ref_seq_dict: Dict[str, str],
-                      umi_dict: Dict[str, Tuple[int, int]],
-                      save_path=None,
-                      save_suffix=".tagged.bam",
-                      max_del_in_umi=0,
-                      max_ins_in_umi=0,
-                      max_iupac_mismatches=0,
-                      restrict_to_length=True,
-                      bam_tag_dict: Dict[str, str] = None,
-                      subset_count=-1) -> Path:
+def bam_to_tagged_bam(
+    bam_file_path: Path,
+    ref_seq_dict: Dict[str, str],
+    umi_dict: Dict[str, Tuple[int, int]],
+    save_path=None,
+    save_suffix=".tagged.bam",
+    max_del_in_umi=0,
+    max_ins_in_umi=0,
+    max_iupac_mismatches=0,
+    restrict_to_length=True,
+    bam_tag_dict: Dict[str, str] = None,
+    subset_count=-1,
+) -> Path:
     """
     Extract UMIs from a BAM file and write them to a new BAM file with the UMI sequence
     and deletion count stored in tags.
@@ -66,14 +69,17 @@ def bam_to_tagged_bam(bam_file_path: Path,
     :param subset_count: Number of reads to process (use -1 for all reads).
     :return: Path to the output BAM file.
     """
-    assert bam_file_path.exists(), f"The provided bam file {bam_file_path} does not exist"
+    assert bam_file_path.exists(), (
+        f"The provided bam file {bam_file_path} does not exist"
+    )
 
     bam_tag_dict_required_keys = [
         "umi_sequence",
         "deletion_count",
         "insertion_count",
         "mismatch_count",
-        "umi_length"]
+        "umi_length",
+    ]
     if bam_tag_dict is None:
         bam_tag_dict = {
             "umi_sequence": "uM",
@@ -85,53 +91,58 @@ def bam_to_tagged_bam(bam_file_path: Path,
     else:
         for key in bam_tag_dict_required_keys:
             if key not in bam_tag_dict:
-                raise ValueError(f"The provided bam_tag_dict is missing the required key: {key}")
-    
+                raise ValueError(
+                    f"The provided bam_tag_dict is missing the required key: {key}"
+                )
+
     if save_path is None:
         output_bam_path = bam_file_path.with_suffix(save_suffix)
     else:
         output_bam_path = Path(save_path)
     failed_bam_path = output_bam_path.with_suffix(".failed.bam")
-    
-    with pysam.AlignmentFile(bam_file_path, "rb") as input_bam, \
-         pysam.AlignmentFile(output_bam_path, "wb", header=input_bam.header) as out_bam, \
-         pysam.AlignmentFile(failed_bam_path, "wb", header=input_bam.header) as failed_bam:
-        
+
+    with (
+        pysam.AlignmentFile(bam_file_path, "rb") as input_bam,
+        pysam.AlignmentFile(output_bam_path, "wb", header=input_bam.header) as out_bam,
+        pysam.AlignmentFile(
+            failed_bam_path, "wb", header=input_bam.header
+        ) as failed_bam,
+    ):
         log.debug(f"Opened input BAM file: {bam_file_path}")
         log.debug(f"Opened output BAM file: {output_bam_path}")
         log.debug(f"Opened failed BAM file: {failed_bam_path}")
-        
+
         umi_success_count = 0
         umi_drop_count = 0
         dropped_for_del, dropped_for_ins, dropped_for_mismatch = 0, 0, 0
         dropped_for_length, dropped_for_too_long, dropped_for_too_short = 0, 0, 0
         expected_umi_len_dict = {}
         for target_chr, (index, (umi_ref_start, umi_ref_end)) in umi_dict.items():
-            
             expected_umi_len = umi_ref_end - umi_ref_start + 1
             expected_umi_len_dict[target_chr] = expected_umi_len
-            
+
             ref_seq = ref_seq_dict[target_chr]
-            ref_umi_seq = ref_seq[umi_ref_start:umi_ref_end+1]
+            ref_umi_seq = ref_seq[umi_ref_start : umi_ref_end + 1]
             log.info(f"Ready to extract UMIs from contig: {target_chr}")
             log.info(f"Expected UMI Pattern: {ref_umi_seq}")
-            
+
             iterator_total = input_bam.count(target_chr, umi_ref_start, umi_ref_end)
-            
+
             if 0 < subset_count < iterator_total:
                 iterator_total = subset_count
 
             log.debug(f"Started extracting UMIs for contig: {target_chr}")
-            
-            bam_iterator = tqdm(enumerate(input_bam.fetch(target_chr,
-                                                          umi_ref_start,
-                                                          umi_ref_end)),
-                                total=iterator_total,
-                                desc=f"Extracting UMIs from {target_chr}")
+
+            bam_iterator = tqdm(
+                enumerate(input_bam.fetch(target_chr, umi_ref_start, umi_ref_end)),
+                total=iterator_total,
+                desc=f"Extracting UMIs from {target_chr}",
+            )
             for i, entry in bam_iterator:
                 try:
-                    entry_dict = extract_ref_and_query_region(entry, ref_seq,
-                                                              umi_ref_start, umi_ref_end)
+                    entry_dict = extract_ref_and_query_region(
+                        entry, ref_seq, umi_ref_start, umi_ref_end
+                    )
                     extracted_seq: str = entry_dict["query_sequence"]
                     ins_count: int = entry_dict["ins_count"]
                     del_count: int = entry_dict["del_count"]
@@ -145,15 +156,27 @@ def bam_to_tagged_bam(bam_file_path: Path,
                         length_cutoff_passed = True
 
                     # Add all the new tags to the entry
-                    entry.set_tag(bam_tag_dict['umi_sequence'], extracted_seq, value_type='Z')
-                    entry.set_tag(bam_tag_dict['deletion_count'], del_count, value_type='i')
-                    entry.set_tag(bam_tag_dict['insertion_count'], ins_count, value_type='i')
-                    entry.set_tag(bam_tag_dict['mismatch_count'], mismatch_count, value_type='i')
-                    entry.set_tag(bam_tag_dict['umi_length'], len(extracted_seq), value_type='i')
-                    if del_count <= max_del_in_umi \
-                            and ins_count <= max_ins_in_umi \
-                            and mismatch_count <= max_iupac_mismatches \
-                            and length_cutoff_passed:
+                    entry.set_tag(
+                        bam_tag_dict["umi_sequence"], extracted_seq, value_type="Z"
+                    )
+                    entry.set_tag(
+                        bam_tag_dict["deletion_count"], del_count, value_type="i"
+                    )
+                    entry.set_tag(
+                        bam_tag_dict["insertion_count"], ins_count, value_type="i"
+                    )
+                    entry.set_tag(
+                        bam_tag_dict["mismatch_count"], mismatch_count, value_type="i"
+                    )
+                    entry.set_tag(
+                        bam_tag_dict["umi_length"], len(extracted_seq), value_type="i"
+                    )
+                    if (
+                        del_count <= max_del_in_umi
+                        and ins_count <= max_ins_in_umi
+                        and mismatch_count <= max_iupac_mismatches
+                        and length_cutoff_passed
+                    ):
                         out_bam.write(entry)
                         umi_success_count += 1
                     else:
@@ -173,22 +196,41 @@ def bam_to_tagged_bam(bam_file_path: Path,
                         failed_bam.write(entry)
 
                     if i % 100 == 0:
-                        bam_iterator.desc = (f"Extracting UMIs from {target_chr} | {i:,} reads | "
-                                             f"{umi_success_count:,} fitting UMIs | "
-                                             f"{umi_drop_count:,} dropped UMIs")
+                        bam_iterator.desc = (
+                            f"Extracting UMIs from {target_chr} | {i:,} reads | "
+                            f"{umi_success_count:,} fitting UMIs | "
+                            f"{umi_drop_count:,} dropped UMIs"
+                        )
                     if 0 < subset_count <= i:
                         break
                 except IndexError as e:
-                    log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
+                    log.error(
+                        entry.reference_start,
+                        entry.reference_end,
+                        entry.get_tag("cs"),
+                        e,
+                    )
                     continue
                 except ValueError as e:
-                    log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
+                    log.error(
+                        entry.reference_start,
+                        entry.reference_end,
+                        entry.get_tag("cs"),
+                        e,
+                    )
                     continue
                 except Exception as e:
-                    log.error(entry.reference_start, entry.reference_end, entry.get_tag('cs'), e)
+                    log.error(
+                        entry.reference_start,
+                        entry.reference_end,
+                        entry.get_tag("cs"),
+                        e,
+                    )
                     raise e
             log.trace(f"Finished extracting UMIs for contig: {target_chr}")
-        log.debug(f"Finished extracting UMIs from {bam_file_path} and writing to {output_bam_path}")
+        log.debug(
+            f"Finished extracting UMIs from {bam_file_path} and writing to {output_bam_path}"
+        )
     summary_string = (
         f"Summary of UMI Extraction below:\n"
         f"  Extracted {umi_success_count:>8,} UMIs from {i + 1:>8,} reads\n"
@@ -197,13 +239,18 @@ def bam_to_tagged_bam(bam_file_path: Path,
         f"  Breakdown (reads can fit into multiple categories): \n"
         f"    Dropped {dropped_for_del:>8,} UMIs for having too many deletions (>{max_del_in_umi})\n"
         f"    Dropped {dropped_for_ins:>8,} UMIs for having too many insertions (>{max_ins_in_umi})\n"
-        f"    Dropped {dropped_for_mismatch:>8,} UMIs for having too many mismatches (>{max_iupac_mismatches})\n")
+        f"    Dropped {dropped_for_mismatch:>8,} UMIs for having too many mismatches (>{max_iupac_mismatches})\n"
+    )
     if restrict_to_length:
-        expected_lengths_string = ", ".join([f"{k}: {v}nts" for k, v in expected_umi_len_dict.items()])
-        summary_string += (f"    Dropped {dropped_for_length:>8,} UMIs for not being the expected length "
-                           f"({expected_lengths_string})\n"
-                           f"      Dropped {dropped_for_too_long:>8,} UMIs for being too long\n"
-                           f"      Dropped {dropped_for_too_short:>8,} UMIs for being too short\n")
+        expected_lengths_string = ", ".join(
+            [f"{k}: {v}nts" for k, v in expected_umi_len_dict.items()]
+        )
+        summary_string += (
+            f"    Dropped {dropped_for_length:>8,} UMIs for not being the expected length "
+            f"({expected_lengths_string})\n"
+            f"      Dropped {dropped_for_too_long:>8,} UMIs for being too long\n"
+            f"      Dropped {dropped_for_too_short:>8,} UMIs for being too short\n"
+        )
     log.debug(summary_string)
     with open(output_bam_path.with_suffix(".summary.txt"), "w") as summary_file:
         summary_file.write(summary_string)
@@ -211,26 +258,27 @@ def bam_to_tagged_bam(bam_file_path: Path,
     return output_bam_path
 
 
-def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: str,
-                                 region_start: int, region_end: int) -> dict:
+def extract_ref_and_query_region(
+    target_entry: pysam.AlignedSegment, ref_seq: str, region_start: int, region_end: int
+) -> dict:
     """
     Extracts reference and query regions from a given aligned segment.
 
     This function extracts the reference and query positions and sequences from a given aligned segment that
     fall within a specified range. It also provides the option to write the output to a file and print the output.
-    
+
     The final outputs for a read with the following cigar string would look like this:
         2M2D3M2I3M
-        
+
         query_positions: [0, 1, 2, None, None, 3, 4, 5, 6, 7, 8, 9, 10]
-        
+
         query_sequence:   A  T  G     .     .  A  T  G  a  t  A  T   G
-        
+
         ref_positions:   [0, 1, 2, 3, 4, 5, 6, 7, None, None, 8, 9, 10]
-        
+
         ref_sequence:     A  T  G  t  g  A  T  G     .     .  A  T   G
-    
-    
+
+
 
     Args:
         target_entry (pysam.AlignedSegment): The aligned segment from which to extract the reference and query regions.
@@ -250,28 +298,39 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
             perfect_match: Whether the query sequence perfectly matches the reference sequence
     """
     real_ref_seq = ref_seq
-    region_ref_positions = extract_positions_within_range(target_entry.get_reference_positions(full_length=True),
-                                                          region_start, region_end)
+    region_ref_positions = extract_positions_within_range(
+        target_entry.get_reference_positions(full_length=True), region_start, region_end
+    )
     region_ref_sequence = [real_ref_seq[i] if i else "." for i in region_ref_positions]
     # Now we need to be able to pull out the same nucleotides for the actual query sequence
     aligned_pairs = target_entry.get_aligned_pairs(with_seq=False)
-    region_query_positions = extract_query_positions_from_ref(aligned_pairs, region_start, region_end)
-    region_query_sequence = [target_entry.query_sequence[i] if i else "." for i in region_query_positions]
-    
+    region_query_positions = extract_query_positions_from_ref(
+        aligned_pairs, region_start, region_end
+    )
+    region_query_sequence = [
+        target_entry.query_sequence[i] if i else "." for i in region_query_positions
+    ]
+
     try:
-        region_query_phreds = [NucleotideQuality(q_score=target_entry.query_qualities[i]).to_phred_char()
-                               if i else " " for i in region_query_positions]
+        region_query_phreds = [
+            NucleotideQuality(q_score=target_entry.query_qualities[i]).to_phred_char()
+            if i
+            else " "
+            for i in region_query_positions
+        ]
     except TypeError:
         # This is a case where the query quality is None because it wasn't stored in the BAM file?
         # We'll just give every read a perfect quality score for now...
         # TODO: Expand this functionality a bit more to handle this case better
         region_query_phreds = ["A" if i else " " for i in region_query_positions]
-    
+
     region_ref_sequence_matched, region_query_sequence_matched = [], []
     ins_count, del_count, was_perfect, mismatch_count = 0, 0, True, 0
     if not region_ref_sequence or not region_query_sequence:
         was_perfect = False
-    for ref, query, phred in zip(region_ref_sequence, region_query_sequence, region_query_phreds):
+    for ref, query, phred in zip(
+        region_ref_sequence, region_query_sequence, region_query_phreds
+    ):
         ref, query = ref.upper(), query.upper()
         if ref == query:
             region_ref_sequence_matched.append(ref)
@@ -294,12 +353,16 @@ def extract_ref_and_query_region(target_entry: pysam.AlignedSegment, ref_seq: st
             region_query_sequence_matched.append(query.lower())
             was_perfect = False
             mismatch_count += 1
-    return_dict = {'ref_positions': region_ref_positions,
-                   'ref_sequence': ''.join(region_ref_sequence_matched),
-                   'query_positions': region_query_positions,
-                   'query_sequence': ''.join(region_query_sequence_matched),
-                   'ins_count': ins_count, 'del_count': del_count, 'mismatch_count': mismatch_count,
-                   'perfect_match': was_perfect}
+    return_dict = {
+        "ref_positions": region_ref_positions,
+        "ref_sequence": "".join(region_ref_sequence_matched),
+        "query_positions": region_query_positions,
+        "query_sequence": "".join(region_query_sequence_matched),
+        "ins_count": ins_count,
+        "del_count": del_count,
+        "mismatch_count": mismatch_count,
+        "perfect_match": was_perfect,
+    }
     return return_dict
 
 
@@ -353,12 +416,16 @@ def extract_query_positions_from_ref(aligned_pairs, start, end):
 
 
 def bam_to_df(bam_file_path: Path, subset_count=-1) -> pd.DataFrame:
-    assert bam_file_path.exists(), f"The provided bam file {bam_file_path} does not exist"
-    with pysam.AlignmentFile(bam_file_path, 'rb') as input_bam:
+    assert bam_file_path.exists(), (
+        f"The provided bam file {bam_file_path} does not exist"
+    )
+    with pysam.AlignmentFile(bam_file_path, "rb") as input_bam:
         iterator_total = input_bam.count()
         if 0 < subset_count < iterator_total:
             iterator_total = subset_count
-        bam_iterator = tqdm(enumerate(input_bam.fetch()), total=iterator_total, desc="Extracting Reads")
+        bam_iterator = tqdm(
+            enumerate(input_bam.fetch()), total=iterator_total, desc="Extracting Reads"
+        )
         output_dict = {}
         log.trace(f"Started extracting reads from {bam_file_path}")
         for i, entry in bam_iterator:

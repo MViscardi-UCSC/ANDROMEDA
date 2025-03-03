@@ -5,6 +5,7 @@ Marcus Viscardi,    February 13, 2025
 Place for functions that deal with BAM files specifically.
 Mostly just wrappers around `pysam` functions.
 """
+
 from pathlib import Path
 from typing import List, Tuple
 import pysam
@@ -48,12 +49,22 @@ def histogram_tag_values(bam_file: Path, tag: str) -> Tuple[List[int], List[int]
             if read.has_tag(tag):
                 val = read.get_tag(tag)
                 if val == 41:
-                    if read.get_tag("ud") <= 1 and read.get_tag("ui") <= 1 and read.get_tag("um") <= 2:
-                        print(read.get_tag("uM"),
-                              "L:", read.get_tag("ul"),
-                              "I:", read.get_tag("ui"),
-                              "D:", read.get_tag("ud"),
-                              "M:", read.get_tag("um"))
+                    if (
+                        read.get_tag("ud") <= 1
+                        and read.get_tag("ui") <= 1
+                        and read.get_tag("um") <= 2
+                    ):
+                        print(
+                            read.get_tag("uM"),
+                            "L:",
+                            read.get_tag("ul"),
+                            "I:",
+                            read.get_tag("ui"),
+                            "D:",
+                            read.get_tag("ud"),
+                            "M:",
+                            read.get_tag("um"),
+                        )
                 values.append(val)
     unique_values = set(values)
     value_counts = [values.count(value) for value in unique_values]
@@ -82,7 +93,9 @@ def scatter_tag_v_tag(bam_file: Path, x_tag: str, y_tag: str) -> None:
     y_values = []
     with pysam.AlignmentFile(bam_file, "rb") as bam:
         total_reads = bam.mapped + bam.unmapped
-        for read in tqdm(bam, total=total_reads, desc=f"Extracting {x_tag} and {y_tag} tags from BAM"):
+        for read in tqdm(
+            bam, total=total_reads, desc=f"Extracting {x_tag} and {y_tag} tags from BAM"
+        ):
             if read.has_tag(x_tag) and read.has_tag(y_tag):
                 x_values.append(read.get_tag(x_tag))
                 y_values.append(read.get_tag(y_tag))
@@ -116,7 +129,7 @@ def barplot_contig_counts(bam_file: Path):
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_bam = Path(
         "../examples/JA-NP-096/consensus/"
         "250218_JANP-096_LT.AtoG.sorted.tagged.grouped_2dist.consensus_sequences.sorted.bam"

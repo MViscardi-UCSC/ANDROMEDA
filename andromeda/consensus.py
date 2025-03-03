@@ -5,6 +5,7 @@ Marcus Viscardi,    February 6, 2025
 
 Complute/collapse consensus sequences for UMI groups in BAM files.
 """
+
 import argparse
 import pysam
 from Bio import SeqIO
@@ -17,13 +18,18 @@ from typing import Dict, List, Tuple
 import sys
 
 import andromeda.phred_tools as pT
-from andromeda.io_utils import load_single_reference_contig, load_reference_contigs_to_dict
+from andromeda.io_utils import (
+    load_single_reference_contig,
+    load_reference_contigs_to_dict,
+)
 from andromeda.logger import log
 
 HELP_TEXT = f"Compute/collapse consensus sequences for UMI groups in BAM files."
 
 
-def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, List[pysam.AlignedSegment]]:
+def extract_umi_groups(
+    bam_file: Path, min_group_size: int = 2
+) -> Dict[str, List[pysam.AlignedSegment]]:
     """
     Groups BAM reads by UMI (UG tag).
 
@@ -44,20 +50,25 @@ def extract_umi_groups(bam_file: Path, min_group_size: int = 2) -> Dict[str, Lis
             if umi_group_id not in umi_groups:
                 umi_groups[umi_group_id] = []
             umi_groups[umi_group_id].append(read)
-        log.trace(f"Finished extracting UMI groups tqdm loop (total items processed: {len(umi_groups)})")
+        log.trace(
+            f"Finished extracting UMI groups tqdm loop (total items processed: {len(umi_groups)})"
+        )
 
     # Filter groups by size
     umi_groups = {k: v for k, v in umi_groups.items() if len(v) >= min_group_size}
     total_reads = sum([len(v) for v in umi_groups.values()])
-    log.info(f"✅ {len(umi_groups)} UMI groups retained (min size: {min_group_size}). "
-             f"These contain {total_reads} reads.")
+    log.info(
+        f"✅ {len(umi_groups)} UMI groups retained (min size: {min_group_size}). "
+        f"These contain {total_reads} reads."
+    )
     return umi_groups
 
 
-def extract_ref_oriented_sequence(read_alignment: pysam.AlignedSegment,
-                                  reference_seq: str, extract_phred=True) -> dict:
+def extract_ref_oriented_sequence(
+    read_alignment: pysam.AlignedSegment, reference_seq: str, extract_phred=True
+) -> dict:
     """Aligns a query/read sequence and its phred scores to the reference.
-    
+
     Args:
         read_alignment (pysam.AlignedSegment): A read alignment object.
         reference_seq (str): The reference sequence.
@@ -71,16 +82,26 @@ def extract_ref_oriented_sequence(read_alignment: pysam.AlignedSegment,
             query_phreds: (optional) List of query phred scores.
     """
     real_ref_seq = reference_seq
-    aligned_pairs = read_alignment.get_aligned_pairs(with_seq=False)  # This will just fail, whatever
+    aligned_pairs = read_alignment.get_aligned_pairs(
+        with_seq=False
+    )  # This will just fail, whatever
     region_ref_positions = [ref for query, ref in aligned_pairs if ref is not None]
     region_ref_sequence = [real_ref_seq[i] for i in region_ref_positions]
     # Now we need to be able to pull out the same nucleotides for the actual query sequence
     region_query_positions = [query for query, ref in aligned_pairs if ref is not None]
-    region_query_sequence = [read_alignment.query_sequence[i] if i else "." for i in region_query_positions]
+    region_query_sequence = [
+        read_alignment.query_sequence[i] if i else "." for i in region_query_positions
+    ]
     if extract_phred:
         try:
-            region_query_phreds = [pT.NucleotideQuality(q_score=read_alignment.query_qualities[i]).to_phred_char()
-                                   if i else " " for i in region_query_positions]
+            region_query_phreds = [
+                pT.NucleotideQuality(
+                    q_score=read_alignment.query_qualities[i]
+                ).to_phred_char()
+                if i
+                else " "
+                for i in region_query_positions
+            ]
         except TypeError:
             # This is a case where the query quality is None because it wasn't stored in the BAM file?
             # We'll just give every read a "perfect" quality score for now...
@@ -97,10 +118,11 @@ def extract_ref_oriented_sequence(read_alignment: pysam.AlignedSegment,
     return output_dict
 
 
-def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_seq: str,
-                                   extract_phreds=True) -> List[dict]:
+def extract_ref_oriented_sequences(
+    reads: List[pysam.AlignedSegment], reference_seq: str, extract_phreds=True
+) -> List[dict]:
     """Aligns reads to reference orientation.
-    
+
     Args:
         reads (List[pysam.AlignedSegment]): List of read alignments.
         reference_seq (str): Reference sequence.
@@ -112,18 +134,24 @@ def extract_ref_oriented_sequences(reads: List[pysam.AlignedSegment], reference_
     """
     aligned_seqs = []
     for read in reads:
-        query_seq_ref_oriented = extract_ref_oriented_sequence(read, reference_seq, extract_phred=extract_phreds)
-        const_len_seq = "".join([
-            " " * read.reference_start,
-            "".join(query_seq_ref_oriented["query_sequence"]),
-            " " * (len(reference_seq) - read.reference_end),
-        ])
-        if extract_phreds:
-            const_len_phreds = "".join([
+        query_seq_ref_oriented = extract_ref_oriented_sequence(
+            read, reference_seq, extract_phred=extract_phreds
+        )
+        const_len_seq = "".join(
+            [
                 " " * read.reference_start,
-                "".join(query_seq_ref_oriented["query_phreds"]),
+                "".join(query_seq_ref_oriented["query_sequence"]),
                 " " * (len(reference_seq) - read.reference_end),
-            ])
+            ]
+        )
+        if extract_phreds:
+            const_len_phreds = "".join(
+                [
+                    " " * read.reference_start,
+                    "".join(query_seq_ref_oriented["query_phreds"]),
+                    " " * (len(reference_seq) - read.reference_end),
+                ]
+            )
         save_dict = {
             "query_sequence": const_len_seq,
         }
@@ -159,7 +187,7 @@ def pick_major_base_and_phred(column: List[Tuple[str, str]]) -> Tuple[str, str, 
     major_phred_scores = [base[1] for base in column if base[0] == major_base]
     avg_phred = pT.avg_phred_char_strings_to_obj(major_phred_scores)
     if avg_phred.to_phred_char() != " ":
-        avg_phred *= (1 / major_fraction)  # TODO: Try different methods here!!
+        avg_phred *= 1 / major_fraction  # TODO: Try different methods here!!
         avg_phred_char = avg_phred.to_phred_char()
     else:
         avg_phred_char = " "
@@ -168,8 +196,9 @@ def pick_major_base_and_phred(column: List[Tuple[str, str]]) -> Tuple[str, str, 
     return major_base, avg_phred_char, major_fraction
 
 
-def compute_majority_consensus(reads: List[pysam.AlignedSegment],
-                               reference_seq: str, calc_avg_phreds=True) -> Tuple[str, str, str, Dict]:
+def compute_majority_consensus(
+    reads: List[pysam.AlignedSegment], reference_seq: str, calc_avg_phreds=True
+) -> Tuple[str, str, str, Dict]:
     """
     Computes a majority-rule consensus sequence for a UMI group.
     Args:
@@ -183,21 +212,27 @@ def compute_majority_consensus(reads: List[pysam.AlignedSegment],
             index 2: Consensus key (M, X, or space)
             index 3: Stats dictionary
     """
-    aligned_seqs_and_phreds = extract_ref_oriented_sequences(reads, reference_seq, extract_phreds=calc_avg_phreds)
+    aligned_seqs_and_phreds = extract_ref_oriented_sequences(
+        reads, reference_seq, extract_phreds=calc_avg_phreds
+    )
     aligned_seqs = [seq["query_sequence"] for seq in aligned_seqs_and_phreds]
     if calc_avg_phreds:
         aligned_phreds = [seq["query_phreds"] for seq in aligned_seqs_and_phreds]
-        assert len(aligned_seqs) == len(aligned_phreds), "Mismatched lengths of sequences and phreds!"
+        assert len(aligned_seqs) == len(aligned_phreds), (
+            "Mismatched lengths of sequences and phreds!"
+        )
 
     output_seq = []
     output_phreds = []
     output_key = []
-    stats = {"matches": 0,
-             "mismatches": 0,
-             "gaps": 0,
-             "low_confidence": 0,
-             "mid_confidence": 0,
-             "group_size": len(reads)}
+    stats = {
+        "matches": 0,
+        "mismatches": 0,
+        "gaps": 0,
+        "low_confidence": 0,
+        "mid_confidence": 0,
+        "group_size": len(reads),
+    }
 
     for i, ref_base in enumerate(reference_seq.upper()):
         seq_char_column = [seq[i].upper() for seq in aligned_seqs]
@@ -268,12 +303,14 @@ def create_consensus_cigar(match_str, collapse_X_to_M=False) -> Tuple[str, int]:
     return "".join(cigared_str), match_str.index("M")
 
 
-def call_consensus_from_bam(bam_file: Path,
-                            reference_fasta: Path,
-                            output_parent_dir: Path,
-                            mismatches_in_cigar: bool = True,
-                            calc_avg_phreds: bool = True,
-                            min_group_size: int = 2) -> Tuple[pd.DataFrame, Path]:
+def call_consensus_from_bam(
+    bam_file: Path,
+    reference_fasta: Path,
+    output_parent_dir: Path,
+    mismatches_in_cigar: bool = True,
+    calc_avg_phreds: bool = True,
+    min_group_size: int = 2,
+) -> Tuple[pd.DataFrame, Path]:
     """
     Main function to extract UMIs, compute consensus sequences, and save results.
 
@@ -303,26 +340,39 @@ def call_consensus_from_bam(bam_file: Path,
     for umi_id, reads in consensus_iterator:
         contig = reads[0].reference_name
         reference_seq = ref_dict[contig]
-        
-        consensus_iterator.set_postfix_str(f"Current Contig & uID: {contig}-{umi_id:0>5}; Members: {len(reads):>4}")
-        consensus_seq, consensus_phred, match_str, stats = compute_majority_consensus(reads, reference_seq,
-                                                                                      calc_avg_phreds=calc_avg_phreds)
-        consensus_cigar, consensus_start = create_consensus_cigar(match_str,
-                                                                  collapse_X_to_M=not mismatches_in_cigar)
+
+        consensus_iterator.set_postfix_str(
+            f"Current Contig & uID: {contig}-{umi_id:0>5}; Members: {len(reads):>4}"
+        )
+        consensus_seq, consensus_phred, match_str, stats = compute_majority_consensus(
+            reads, reference_seq, calc_avg_phreds=calc_avg_phreds
+        )
+        consensus_cigar, consensus_start = create_consensus_cigar(
+            match_str, collapse_X_to_M=not mismatches_in_cigar
+        )
         consensus_seq_trimmed = consensus_seq.replace(" ", "").replace(".", "")
         # We probably need to do the same as above with the phred scores...
-        consensus_phred_trimmed = consensus_phred.replace(" ", "")  # TODO: Did this work?
-        assert len(consensus_seq_trimmed) == len(consensus_phred_trimmed), "Mismatched lengths of sequence and phred!"
-        results.append({
-            "UMI": umi_id,
-            "Consensus": consensus_seq_trimmed,
-            "Phred": consensus_phred_trimmed,
-            "CIGAR": consensus_cigar,
-            "start_pos": consensus_start,
-            "contig": contig,
-            **stats})
-    log.trace(f"Finished calling consensus sequences tqdm loop (total items processed: {len(results)})")
-    
+        consensus_phred_trimmed = consensus_phred.replace(
+            " ", ""
+        )  # TODO: Did this work?
+        assert len(consensus_seq_trimmed) == len(consensus_phred_trimmed), (
+            "Mismatched lengths of sequence and phred!"
+        )
+        results.append(
+            {
+                "UMI": umi_id,
+                "Consensus": consensus_seq_trimmed,
+                "Phred": consensus_phred_trimmed,
+                "CIGAR": consensus_cigar,
+                "start_pos": consensus_start,
+                "contig": contig,
+                **stats,
+            }
+        )
+    log.trace(
+        f"Finished calling consensus sequences tqdm loop (total items processed: {len(results)})"
+    )
+
     df = pd.DataFrame(results)
     output_file_name = bam_file.stem + "_consensus_sequences.tsv"
     output_file_path = output_dir / output_file_name
@@ -333,7 +383,9 @@ def call_consensus_from_bam(bam_file: Path,
     return df, output_file_path
 
 
-def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Path, template_bam: Path) -> Path:
+def consensus_df_to_bam(
+    df: pd.DataFrame, output_bam: Path, reference_fasta: Path, template_bam: Path
+) -> Path:
     """
     Converts a DataFrame of consensus sequences to a BAM file.
     Args:
@@ -342,27 +394,35 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
         reference_fasta (Path): Path to reference FASTA file.
         template_bam (Path): Path to template BAM file. (This is used to copy the header.)
     """
-    with (pysam.FastaFile(reference_fasta) as ref,
-          pysam.AlignmentFile(template_bam, "rb") as template):
+    with (
+        pysam.FastaFile(reference_fasta) as ref,
+        pysam.AlignmentFile(template_bam, "rb") as template,
+    ):
         header = template.header.to_dict()
         # pprint(header)
-        previous_program_pn = header['PG'][-1]['PN']
-        add_to_header = {"ID": "ANDROMEDA-consensus",
-                         "PN": "ANDROMEDA",
-                         "PP": previous_program_pn,  # This needs to be the PN of the previous program!!
-                         "VN": "0.0.01",
-                          "CL": " ".join(sys.argv)}
-        header['PG'].append(add_to_header)
+        previous_program_pn = header["PG"][-1]["PN"]
+        add_to_header = {
+            "ID": "ANDROMEDA-consensus",
+            "PN": "ANDROMEDA",
+            "PP": previous_program_pn,  # This needs to be the PN of the previous program!!
+            "VN": "0.0.01",
+            "CL": " ".join(sys.argv),
+        }
+        header["PG"].append(add_to_header)
         # pprint(header)
 
         ref_id_to_contig_dict = build_ref_id_to_contig_dict(template_bam)
         contig_to_ref_id_dict = {v: k for k, v in ref_id_to_contig_dict.items()}
-        
-        with pysam.AlignmentFile(output_bam, "wb",
-                                 header=header,
-                                 ) as outf:
+
+        with pysam.AlignmentFile(
+            output_bam,
+            "wb",
+            header=header,
+        ) as outf:
             for _, row in df.iterrows():
-                assert len(row["Consensus"]) == len(row["Phred"]), "Mismatched lengths of sequence and phred!"
+                assert len(row["Consensus"]) == len(row["Phred"]), (
+                    "Mismatched lengths of sequence and phred!"
+                )
                 read = pysam.AlignedSegment()
                 read.query_name = f"UMIID{row['UMI']:0>6}"
                 read.query_sequence = row["Consensus"]
@@ -372,18 +432,24 @@ def consensus_df_to_bam(df: pd.DataFrame, output_bam: Path, reference_fasta: Pat
                 read.reference_id = contig_to_ref_id_dict[row["contig"]]
                 read.mapping_quality = 20  # Arbitrary for now
                 read.template_length = len(read.query_sequence)
-                read.query_qualities = pT.PhredString(phred_string=row["Phred"]).to_q_scores()
+                read.query_qualities = pT.PhredString(
+                    phred_string=row["Phred"]
+                ).to_q_scores()
                 read.set_tag("ug", row["group_size"], "i")
                 outf.write(read)
     log.info(f"✅ Saved BAM file: {output_bam}")
     pysam.sort("-o", str(output_bam.with_suffix(".sorted.bam")), str(output_bam))
     log.info(f"✅ Sorted BAM file: {output_bam.with_suffix('.sorted.bam')}")
-    pysam.index(str(output_bam.with_suffix('.sorted.bam')))
+    pysam.index(str(output_bam.with_suffix(".sorted.bam")))
     log.info(f"✅ Indexed BAM file: {output_bam.with_suffix('.sorted.bam')}.bai")
-    output_sam = output_bam.with_suffix('.sorted.bam').with_suffix(".sam")
+    output_sam = output_bam.with_suffix(".sorted.bam").with_suffix(".sam")
     output_sam.touch()
-    pysam.view("-ho", str(output_sam), str(output_bam.with_suffix('.sorted.bam')),
-               save_stdout=str(output_sam))
+    pysam.view(
+        "-ho",
+        str(output_sam),
+        str(output_bam.with_suffix(".sorted.bam")),
+        save_stdout=str(output_sam),
+    )
     log.info(f"✅ Saved SAM file: {output_bam.with_suffix('.sam')}")
     return output_bam
 
@@ -400,6 +466,7 @@ def build_ref_id_to_contig_dict(bam_file: Path) -> Dict[str, str]:
         ref_dict = {ref_id: ref_name for ref_id, ref_name in enumerate(bam.references)}
     return ref_dict
 
+
 def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
     """Generates a plot showing mismatch and confidence rates."""
 
@@ -407,8 +474,17 @@ def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
     #       and the number of UMI groups at each membership number.
 
     plt.figure(figsize=(6, 4))
-    sns.histplot(df["mismatches"], bins=20, kde=True, color="red", alpha=0.6, label="Mismatches")
-    sns.histplot(df["low_confidence"], bins=20, kde=True, color="purple", alpha=0.6, label="Low Confidence")
+    sns.histplot(
+        df["mismatches"], bins=20, kde=True, color="red", alpha=0.6, label="Mismatches"
+    )
+    sns.histplot(
+        df["low_confidence"],
+        bins=20,
+        kde=True,
+        color="purple",
+        alpha=0.6,
+        label="Low Confidence",
+    )
     plt.xlabel("Number of Sites")
     plt.ylabel("Frequency")
     plt.legend()
@@ -422,18 +498,30 @@ def plot_consensus_stats(df: pd.DataFrame, output_dir: Path):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Compute consensus sequences for UMI groups in BAM files.")
+    parser = argparse.ArgumentParser(
+        description="Compute consensus sequences for UMI groups in BAM files."
+    )
 
-    parser.add_argument("ref_fasta", type=Path,
-                        help="Path to reference FASTA file.")
-    parser.add_argument("grouped_bam", type=Path,
-                        help="Path to input BAM file (must have UMIs grouped).")
-    parser.add_argument("output_parent_dir", type=Path,
-                        help="Parent directory to make a new directory inside to save outputs.")
-    parser.add_argument("--min-group-size", type=int, default=2,
-                        help="Minimum reads per UMI group [default: 2].")
-    parser.add_argument("--consensus-plot", action="store_true",
-                        help="Plot consensus quality.")
+    parser.add_argument("ref_fasta", type=Path, help="Path to reference FASTA file.")
+    parser.add_argument(
+        "grouped_bam",
+        type=Path,
+        help="Path to input BAM file (must have UMIs grouped).",
+    )
+    parser.add_argument(
+        "output_parent_dir",
+        type=Path,
+        help="Parent directory to make a new directory inside to save outputs.",
+    )
+    parser.add_argument(
+        "--min-group-size",
+        type=int,
+        default=2,
+        help="Minimum reads per UMI group [default: 2].",
+    )
+    parser.add_argument(
+        "--consensus-plot", action="store_true", help="Plot consensus quality."
+    )
 
     return parser
 
@@ -456,9 +544,12 @@ def pipeline_main(args: argparse.Namespace):
         mismatches_in_cigar=True,
     )
     output_bam_name = args.grouped_bam.stem + ".consensus_sequences.bam"
-    bam_path = consensus_df_to_bam(df, args.output_parent_dir / "consensus" / output_bam_name,
-                                   args.ref_fasta,
-                                   args.grouped_bam)
+    bam_path = consensus_df_to_bam(
+        df,
+        args.output_parent_dir / "consensus" / output_bam_name,
+        args.ref_fasta,
+        args.grouped_bam,
+    )
     if args.consensus_plot:
         plot_consensus_stats(df, args.output_dir)
     return tsv_path, bam_path
