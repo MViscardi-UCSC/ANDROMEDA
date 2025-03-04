@@ -20,10 +20,11 @@ import argparse
 import sys
 from importlib import import_module
 from pathlib import Path
+import tomllib
+import textwrap
 
 from andromeda.logger import log
-from andromeda.__version__ import __version__
-from andromeda.big_text import big_text
+from andromeda.big_text import big_text, big_text_side_char, big_text_closer
 
 MODULES = [
     "andromeda.ref_pos_picker",
@@ -66,12 +67,19 @@ def peek_command():
     return None
 
 
+def get_version():
+    pyproject_path = Path('pyproject.toml')
+    with open(pyproject_path, 'rb') as file:
+        pyproject_contents = tomllib.load(file)
+    return pyproject_contents['project']['version']
+
+
 def global_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
         "--version",
         action="version",
-        version=f"ANDROMEDA v{__version__}",
+        version=f"ANDROMEDA v{get_version()}",
         help="Show the version number and exit.",
     )
     parser.add_argument(
@@ -266,9 +274,37 @@ def run_all_pipeline(args):
             outputs[command_name] = result
 
 
+def print_andromeda_header(spacer_from_left=5):
+    pyproject_path = Path('pyproject.toml')
+    with open(pyproject_path, 'rb') as file:
+        pyproject_contents = tomllib.load(file)
+    data = pyproject_contents['project']
+    project_items = [
+        f"Project: {data['name']}",
+        f"Version: v{data['version']}",
+        f"Description: {data['description']}",
+        f"Python Required: {data['requires-python']}",
+        f"Authors: {', '.join(a['name'] for a in data['authors'])}",
+        f"Source: {data['urls']['source']}",
+    ]
+
+    wrap_width = len(big_text_closer) - 2 - spacer_from_left
+
+    print(big_text)
+    for line in project_items:
+        for wrapped_line in textwrap.wrap(line, width=wrap_width) or ['']:
+            table_print_str = (
+                big_text_side_char
+                + ' ' * spacer_from_left
+                + f'{wrapped_line:<{wrap_width}}'
+                + big_text_side_char
+            )
+            print(table_print_str)
+    print(big_text_closer)
+
 @log.catch
 def main():
-    print(big_text)
+    print_andromeda_header()
     args = parse_args()
 
     log.remove()
