@@ -1,6 +1,14 @@
 [project]
 name = "andromeda"
 version = "0.1.0"
+authors = [
+    {name = "Marcus Viscardi", email = "marcus.viscardi@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+]
 description = "Alignment-based Nucleotide Detection and Read Optimization for Mapping Errors, Deaminations, and Alterations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,3 +23,18 @@ dependencies = [
     "seaborn~=0.13.2",
     "tqdm~=4.67.1",
 ]
+keywords = ["bioinformatics", "alignment", "nucleotide", "mapping", "error", "deamination"]
+
+[project.urls]
+"source" = "https://github.com/MViscardi-UCSC/ANDROMEDA"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["andromeda"]
+
+
+[project.scripts]
+andromeda = "andromeda.cli:main"
