@@ -299,10 +299,10 @@ def main():
             level=args.log_file_level,
         )
         log.success(f"Starting full run of ANDROMEDA pipeline!")
-        log.success(f"CLI called: {' '.join(sys.argv)}")
+        log.info(f"CLI called: {' '.join(sys.argv)}")
         log.success(f"Log level: {args.log_level}")
         log.success(f"Log file level: {args.log_file_level}")
-        log.success(f"Parsed Arguments: {args}")
+        log.debug(f"Parsed Arguments: {args}")
         run_all_pipeline(args)
     else:
         # I want to trigger the more extensive help call (that comes from `run-all --help`) here
