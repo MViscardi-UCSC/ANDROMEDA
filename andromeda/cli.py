@@ -97,7 +97,7 @@ def parse_args():
 
     # Main Parser
     parser = argparse.ArgumentParser(
-        description="ANDROMEDA CLI: Modular UMI Extraction and Processing."
+        description="ANDROMEDA CLI: Modular UMI Map-Based Extraction, Grouping, and Collapsing."
     )
     subparsers = parser.add_subparsers(
         dest="command", required=True, help="Available commands"
