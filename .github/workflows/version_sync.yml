@@ -1,0 +1,25 @@
+name: Sync pyproject Version
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  tag-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+
+      - name: Install toml
+        run: pip install toml
+
+      - name: Read version and tag
+        run: |
+          version=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git tag -a "v${version}" -m "Sync tag with pyproject version"
+          git push origin "v${version}"
