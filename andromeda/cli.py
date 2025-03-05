@@ -35,6 +35,8 @@ MODULES = [
 
 MODULE_NAMES = [module.split(".")[-1] for module in MODULES]
 
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+
 
 def get_dependencies():
     dependencies = {}
@@ -278,7 +280,12 @@ def run_all_pipeline(args):
 
 
 def print_andromeda_header(spacer_from_left=5):
-    pyproject_path = Path("pyproject.toml")
+    pyproject_path = PROJECT_DIR / "pyproject.toml"
+    if not pyproject_path.exists():
+        log.warning(
+            f"Could not find pyproject.toml at {pyproject_path}, skipping header."
+        )
+        return None
     with open(pyproject_path, "rb") as file:
         pyproject_contents = tomllib.load(file)
     data = pyproject_contents["project"]
@@ -304,6 +311,7 @@ def print_andromeda_header(spacer_from_left=5):
             )
             print(table_print_str)
     print(big_text_closer)
+    return None
 
 
 @log.catch
