@@ -17,10 +17,10 @@ ANDROMEDA is a bioinformatics tool designed to process mapped sequencing reads a
 
 ## Running ANDROMEDA with uv
 To run ANDROMEDA with uv, you will need to have the following installed:
-- **uv** (as can be found here: [GitHub link](https://github.com/astral-sh/uv))
-- **samtools**
+- **uv** ([GitHub link](https://github.com/astral-sh/uv))
+- **samtools** ([GitHub link](https://github.com/samtools/samtools))
 
-The `uvx` command will do the rest of gathering the correct python version and all other dependencies! ***WOW!***
+The `uvx` command will do the rest (gathering the correct python version and all other dependencies)! ***WOW!***
 
 To run the full pipeline, you can use the following command:
 ```bash
