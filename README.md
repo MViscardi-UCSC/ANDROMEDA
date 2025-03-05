@@ -1,4 +1,13 @@
 # ANDROMEDA
+
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)
+![GitHub License](https://img.shields.io/github/license/MViscardi-UCSC/ANDROMEDA)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/MViscardi-UCSC/ANDROMEDA)
+![GitHub contributors](https://img.shields.io/github/contributors/MViscardi-UCSC/ANDROMEDA)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/MViscardi-UCSC/ANDROMEDA/python-package.yml)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+
+
 **Alignment-based Nucleotide Detection and Read Optimization for Mapping Errors, Deaminations, and Alterations**
 
 ***
