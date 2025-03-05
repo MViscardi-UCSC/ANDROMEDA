@@ -19,9 +19,11 @@ python andromeda run-all ref.fasta mapped.bam output_parent_directory
 import argparse
 import sys
 from importlib import import_module
+from importlib.resources import Package
 from pathlib import Path
 import tomllib
 import textwrap
+import importlib.metadata as import_metadata
 
 from andromeda.logger import log
 from andromeda.big_text import big_text, big_text_side_char, big_text_closer
@@ -35,7 +37,48 @@ MODULES = [
 
 MODULE_NAMES = [module.split(".")[-1] for module in MODULES]
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PACKAGE_DIR = Path(__file__).resolve().parent
+
+
+def get_project_metadata():
+    """Retrieve package metadata dynamically, whether installed or run locally."""
+    package_name = PACKAGE_DIR.name
+
+    try:
+        # Try to get metadata when installed
+        metadata = import_metadata.metadata(package_name)
+        return {
+            "name": metadata["Name"],
+            "version": metadata["Version"],
+            "description": metadata["Summary"],
+            "author": metadata["Author"],
+            "license": metadata["License"],
+            "requires-python": metadata["Requires-Python"],
+            "source": metadata["Home-page"],
+        }
+    except import_metadata.PackageNotFoundError:
+        pass  # Fall back to searching for pyproject.toml
+
+    # Search for pyproject.toml in parent directories
+    current_path = Path(__file__).resolve()
+    while current_path != current_path.root:
+        pyproject_path = current_path / "pyproject.toml"
+        if pyproject_path.exists():
+            with pyproject_path.open("rb") as f:
+                pyproject_data = tomllib.load(f)
+                project_data = pyproject_data.get("project", {})
+                return {
+                    "name": project_data.get("name"),
+                    "version": project_data.get("version"),
+                    "description": project_data.get("description"),
+                    "authors": project_data.get("authors", []),
+                    "license": project_data.get("license"),
+                    "requires-python": project_data.get("requires-python"),
+                    "source": project_data.get("urls", {}).get("source"),
+                }
+        current_path = current_path.parent
+
+    raise FileNotFoundError("Could not find package metadata or pyproject.toml!")
 
 
 def get_dependencies():
@@ -70,10 +113,7 @@ def peek_command():
 
 
 def get_version():
-    pyproject_path = PROJECT_DIR / "pyproject.toml"
-    with open(pyproject_path, "rb") as file:
-        pyproject_contents = tomllib.load(file)
-    return pyproject_contents["project"]["version"]
+    return get_project_metadata()['version']
 
 
 def global_parser():
@@ -280,23 +320,14 @@ def run_all_pipeline(args):
 
 
 def print_andromeda_header(spacer_from_left=5):
-    pyproject_path = PROJECT_DIR / "pyproject.toml"
-    if not pyproject_path.exists():
-        log.warning(
-            f"Could not find pyproject.toml at {pyproject_path}, skipping header."
-            f"The program thinks the project directory is: {PROJECT_DIR}"
-        )
-        return None
-    with open(pyproject_path, "rb") as file:
-        pyproject_contents = tomllib.load(file)
-    data = pyproject_contents["project"]
+    data = get_project_metadata()
     project_items = [
         f"Project: {data['name']}",
         f"Version: v{data['version']}",
         f"Description: {data['description']}",
         f"Python Required: {data['requires-python']}",
         f"Authors: {', '.join(a['name'] for a in data['authors'])}",
-        f"Source: {data['urls']['source']}",
+        f"Source: {data['source']}",
     ]
 
     wrap_width = len(big_text_closer) - 2 - spacer_from_left

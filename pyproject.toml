@@ -39,6 +39,5 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["andromeda"]
 
-
 [project.scripts]
 andromeda = "andromeda.cli:main"
