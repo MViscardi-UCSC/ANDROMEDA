@@ -47,7 +47,6 @@ def get_project_metadata():
     try:
         # Try to get metadata when installed
         metadata = import_metadata.metadata(package_name)
-        print(metadata)
         return {
             "name": metadata["Name"],
             "version": metadata["Version"],
