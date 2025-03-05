@@ -15,7 +15,17 @@ ANDROMEDA is a bioinformatics tool designed to process mapped sequencing reads a
 - **Error & Confidence Tagging** – Adds metadata on sequence confidence, ambiguous bases, and read support.
 - **Modular Design** – Individual processing steps can be run independently, allowing seamless integration into other workflows.
 
-## Installation
+## Running ANDROMEDA with UV
+To run ANDROMEDA with UV, you will need to have the following installed:
+- uv (as can be found here: )
+- samtools
+
+To run the full pipeline, you can use the following command:
+```bash
+uvx --from git+https://github.com/MViscardi-UCSC/ANDROMEDA andromeda --help
+```
+
+## Full Installation
 ANDROMEDA requires Python 3.8+ and dependencies such as `pysam`, `UMI-tools`, and `samtools`. Install using:
 
 ```bash
