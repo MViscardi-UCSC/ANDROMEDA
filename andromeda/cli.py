@@ -35,7 +35,7 @@ MODULES = [
 
 MODULE_NAMES = [module.split(".")[-1] for module in MODULES]
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = Path(__file__).resolve().parent
 
 
 def get_dependencies():
