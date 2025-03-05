@@ -6,6 +6,9 @@ authors = [
     {name = "Liam Tran"},
     {name = "Joshua A Arribere"},
 ]
+maintainers = [
+    {name = "Marcus J Viscardi", email = "marcus.viscardi@gmail.com"},
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3.11",
@@ -28,11 +31,6 @@ dependencies = [
     "pytest~=8.3.5",
 ]
 keywords = ["bioinformatics", "alignment", "nucleotide", "mapping", "error", "deamination"]
-
-[project.contact]
-author = "Marcus J Viscardi"
-email = "marcus.viscardi@gmail.com"
-github = "MViscardi-UCSC"
 
 [project.urls]
 "source" = "https://github.com/MViscardi-UCSC/ANDROMEDA"
