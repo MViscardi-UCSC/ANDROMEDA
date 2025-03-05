@@ -11,7 +11,7 @@ ANDROMEDA is a bioinformatics tool designed to process mapped sequencing reads a
 - **Map-based Barcode & UMI Extraction** – Extracts nucleotide sequences from user-defined ambiguous positions in mapped reads.
 - **BAM Tagging** – Annotates BAM files with extracted barcode/UMI sequences for downstream analysis.
 - **Modification Detection** – Identifies mismatched bases caused by base modifications (e.g., deamination).
-- **UMI Grouping & Consensus Calling** – Leverages UMI-tools to cluster reads and generate consensus sequences.
+- **UMI Grouping & Consensus Calling** – Leverages [UMI-tools](https://github.com/CGATOxford/UMI-tools) to cluster reads and generate consensus sequences.
 - **Error & Confidence Tagging** – Adds metadata on sequence confidence, ambiguous bases, and read support.
 - **Modular Design** – Individual processing steps can be run independently, allowing seamless integration into other workflows.
 
