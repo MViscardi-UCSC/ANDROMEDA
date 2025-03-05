@@ -24,8 +24,10 @@ jobs:
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.local/bin" >> $GITHUB_PATH  # Ensure `uv` is in the PATH
+        uv self update
     - name: Install dependencies using uv
       run: |
+        uv venv
         uv pip install flake8 pytest
         if [ -f requirements.txt ]; then uv pip install -r requirements.txt; fi
     - name: Lint with flake8
