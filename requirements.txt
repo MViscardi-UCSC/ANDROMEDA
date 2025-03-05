@@ -6,3 +6,4 @@ seaborn~=0.13.2
 matplotlib~=3.10.0
 loguru~=0.7.3
 prompt_toolkit~=3.0.50
+pytest~=8.3.5
