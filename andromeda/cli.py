@@ -70,7 +70,7 @@ def peek_command():
 
 
 def get_version():
-    pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    pyproject_path = PROJECT_DIR / "pyproject.toml"
     with open(pyproject_path, "rb") as file:
         pyproject_contents = tomllib.load(file)
     return pyproject_contents["project"]["version"]
