@@ -17,7 +17,7 @@ python andromeda run-all ref.fasta mapped.bam output_parent_directory
 """
 
 import argparse
-import sys
+import sys, os
 from importlib import import_module
 from importlib.resources import Package
 from pathlib import Path
@@ -79,6 +79,10 @@ def get_project_metadata():
         current_path = current_path.parent
 
     raise FileNotFoundError("Could not find package metadata or pyproject.toml!")
+
+
+def is_uv_run():
+    return os.getenv("UV", None) is not None
 
 
 def get_dependencies():
@@ -334,6 +338,10 @@ def print_andromeda_header(spacer_from_left=5):
         pass
     
     project_items.append(f"Source: {data['source']}")
+
+    if is_uv_run():
+        project_items.append("")
+        project_items.append("Running using uv (look out we got a superuser over here!)")
 
     wrap_width = len(big_text_closer) - 2 - spacer_from_left
 
