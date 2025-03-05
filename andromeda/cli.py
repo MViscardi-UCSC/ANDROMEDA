@@ -47,14 +47,15 @@ def get_project_metadata():
     try:
         # Try to get metadata when installed
         metadata = import_metadata.metadata(package_name)
+        print(metadata)
         return {
             "name": metadata["Name"],
             "version": metadata["Version"],
             "description": metadata["Summary"],
-            "author": metadata["Author"],
+            "authors": metadata["Author"].split(", "),
             "license": metadata["License"],
             "requires-python": metadata["Requires-Python"],
-            "source": metadata["Home-page"],
+            "source": metadata["Project-URL"].split(", ")[1],
         }
     except import_metadata.PackageNotFoundError:
         pass  # Fall back to searching for pyproject.toml
@@ -326,9 +327,14 @@ def print_andromeda_header(spacer_from_left=5):
         f"Version: v{data['version']}",
         f"Description: {data['description']}",
         f"Python Required: {data['requires-python']}",
-        f"Authors: {', '.join(a['name'] for a in data['authors'])}",
-        f"Source: {data['source']}",
     ]
+    try:
+        authors_str = f"Authors: {', '.join(data['authors'])}"
+        project_items.append(authors_str)
+    except KeyError:
+        pass
+    
+    project_items.append(f"Source: {data['source']}")
 
     wrap_width = len(big_text_closer) - 2 - spacer_from_left
 
