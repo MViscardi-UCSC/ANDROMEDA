@@ -16,13 +16,14 @@ ANDROMEDA is a bioinformatics tool designed to process mapped sequencing reads a
 - **Modular Design** – Individual processing steps can be run independently, allowing seamless integration into other workflows.
 
 ## Running ANDROMEDA with UV
-To run ANDROMEDA with UV, you will need to have the following installed:
-- uv (as can be found here: )
+To run ANDROMEDA with uv, you will need to have the following installed:
+- uv (as can be found here: [GitHub link](https://github.com/astral-sh/uv))
 - samtools
+The `uvx` command will do the rest of gathering the correct python version and all other dependencies! (WOW!)
 
 To run the full pipeline, you can use the following command:
 ```bash
-uvx --from git+https://github.com/MViscardi-UCSC/ANDROMEDA andromeda --help
+uvx --from git+https://github.com/MViscardi-UCSC/ANDROMEDA andromeda run-all --help
 ```
 
 ## Full Installation
