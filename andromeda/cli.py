@@ -351,10 +351,11 @@ def print_andromeda_header(spacer_from_left=5):
     
     if get_terminal_width() < len(big_text_closer):
         # We don't have enough space to print the big text, so we'll just print the project items
-        print("ANDROMEDA")
+        print("\nANDROMEDA")
         print("=========")
         for line in project_items:
             print(line)
+        print("\n\n")
     else:
         print(big_text)
         for line in project_items:
