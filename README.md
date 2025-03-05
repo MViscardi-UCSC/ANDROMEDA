@@ -15,11 +15,12 @@ ANDROMEDA is a bioinformatics tool designed to process mapped sequencing reads a
 - **Error & Confidence Tagging** – Adds metadata on sequence confidence, ambiguous bases, and read support.
 - **Modular Design** – Individual processing steps can be run independently, allowing seamless integration into other workflows.
 
-## Running ANDROMEDA with UV
+## Running ANDROMEDA with uv
 To run ANDROMEDA with uv, you will need to have the following installed:
-- uv (as can be found here: [GitHub link](https://github.com/astral-sh/uv))
-- samtools
-The `uvx` command will do the rest of gathering the correct python version and all other dependencies! (WOW!)
+- **uv** (as can be found here: [GitHub link](https://github.com/astral-sh/uv))
+- **samtools**
+
+The `uvx` command will do the rest of gathering the correct python version and all other dependencies! ***WOW!***
 
 To run the full pipeline, you can use the following command:
 ```bash
@@ -81,16 +82,16 @@ python andromeda run-all <ref.fasta> <mapped.bam> <output_parent_directory>
 
 
 ## Dependencies
-- `Python 3.8+`
-- `pysam` and `samtools` dependency
+- `Python 3.11+`
+- `samtools`
 - `UMI-tools`
 - `pandas`
 - `biopython`
-- `seaborn` and `matplotlib` for plotting (***~~optional~~ TODO: Make this optional***)
+- `seaborn` and `matplotlib` for plotting *(~~optional~~)* ***TODO: Make this optional***
 
 
 ## Future Features
-- Support for additional base modifications
+- Support for base modifications, not just mismatches due to deamination
 - Integration with alternative consensus-calling algorithms
 - Enhanced confidence scoring for ambiguous base calls
 
