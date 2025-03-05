@@ -284,6 +284,7 @@ def print_andromeda_header(spacer_from_left=5):
     if not pyproject_path.exists():
         log.warning(
             f"Could not find pyproject.toml at {pyproject_path}, skipping header."
+            f"The program thinks the project directory is: {PROJECT_DIR}"
         )
         return None
     with open(pyproject_path, "rb") as file:
