@@ -1,6 +1,6 @@
 [project]
 name = "andromeda"
-version = "0.2.0"
+version = "0.2.2"
 authors = [
     {name = "Marcus J Viscardi"},
     {name = "Liam Tran"},
