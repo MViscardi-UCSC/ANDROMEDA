@@ -60,8 +60,12 @@ def test_run_all_pipeline(mock_ref_fasta, mock_bam_file, mock_umi_positions, tmp
     
     # Verify the outputs of the grouping step
     assert (output_dir / "grouped").exists()
-    assert (output_dir / "grouped" / "mock_mapped_reads.tagged.grouped_0dist.bam").exists()
-    assert (output_dir / "grouped" / "mock_mapped_reads.tagged.grouped_0dist.tsv").exists()
+    try:
+        assert (output_dir / "grouped" / "mock_mapped_reads.tagged.grouped_0dist.bam").exists()
+        assert (output_dir / "grouped" / "mock_mapped_reads.tagged.grouped_0dist.tsv").exists()
+    except AssertionError as e:
+        files_in_grouping_dir = list((output_dir / "grouped").iterdir())
+        raise AssertionError(f"Grouping step failed\nfiles:\n{files_in_grouping_dir}") from e
     
     # Verify the outputs of the consensus step
     assert (output_dir / "consensus").exists()
