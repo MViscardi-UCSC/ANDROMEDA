@@ -68,10 +68,10 @@ def peek_command():
 
 
 def get_version():
-    pyproject_path = Path('pyproject.toml')
-    with open(pyproject_path, 'rb') as file:
+    pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    with open(pyproject_path, "rb") as file:
         pyproject_contents = tomllib.load(file)
-    return pyproject_contents['project']['version']
+    return pyproject_contents["project"]["version"]
 
 
 def global_parser():
@@ -187,9 +187,12 @@ def run_all_pipeline(args):
     outputs = {}
     assert args.ref_fasta.exists(), f"Reference FASTA file not found: {args.ref_fasta}"
     assert args.mapped_bam.exists(), f"Mapped BAM file not found: {args.mapped_bam}"
-    assert args.output_parent_dir.exists(), (
-        f"Output parent directory not found: {args.output_parent_dir}"
-    )
+    if not args.output_parent_dir.exists():
+        assert args.output_parent_dir.parent.exists(), (
+            f"Parent directory not found: {args.output_parent_dir.parent}"
+        )
+        log.info(f"Creating output directory: {args.output_parent_dir}")
+        args.output_parent_dir.mkdir(parents=True, exist_ok=False)
     assert args.output_parent_dir.is_dir(), (
         f"Output parent directory is not a directory: {args.output_parent_dir}"
     )
@@ -275,10 +278,10 @@ def run_all_pipeline(args):
 
 
 def print_andromeda_header(spacer_from_left=5):
-    pyproject_path = Path('pyproject.toml')
-    with open(pyproject_path, 'rb') as file:
+    pyproject_path = Path("pyproject.toml")
+    with open(pyproject_path, "rb") as file:
         pyproject_contents = tomllib.load(file)
-    data = pyproject_contents['project']
+    data = pyproject_contents["project"]
     project_items = [
         f"Project: {data['name']}",
         f"Version: v{data['version']}",
@@ -292,15 +295,16 @@ def print_andromeda_header(spacer_from_left=5):
 
     print(big_text)
     for line in project_items:
-        for wrapped_line in textwrap.wrap(line, width=wrap_width) or ['']:
+        for wrapped_line in textwrap.wrap(line, width=wrap_width) or [""]:
             table_print_str = (
                 big_text_side_char
-                + ' ' * spacer_from_left
-                + f'{wrapped_line:<{wrap_width}}'
+                + " " * spacer_from_left
+                + f"{wrapped_line:<{wrap_width}}"
                 + big_text_side_char
             )
             print(table_print_str)
     print(big_text_closer)
+
 
 @log.catch
 def main():
@@ -336,8 +340,8 @@ def main():
         )
         log.success(f"Starting full run of ANDROMEDA pipeline!")
         log.info(f"CLI called: {' '.join(sys.argv)}")
-        log.success(f"Log level: {args.log_level}")
-        log.success(f"Log file level: {args.log_file_level}")
+        log.info(f"Log level: {args.log_level}")
+        log.info(f"Log file level: {args.log_file_level}")
         log.debug(f"Parsed Arguments: {args}")
         run_all_pipeline(args)
     else:
