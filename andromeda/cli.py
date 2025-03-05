@@ -24,6 +24,7 @@ from pathlib import Path
 import tomllib
 import textwrap
 import importlib.metadata as import_metadata
+import shutil
 
 from andromeda.logger import log
 from andromeda.big_text import big_text, big_text_side_char, big_text_closer
@@ -83,6 +84,11 @@ def get_project_metadata():
 
 def is_uv_run():
     return os.getenv("UV", None) is not None
+
+
+def get_terminal_width():
+    """Returns the width of the terminal or a default if unavailable."""
+    return shutil.get_terminal_size().columns
 
 
 def get_dependencies():
@@ -336,26 +342,31 @@ def print_andromeda_header(spacer_from_left=5):
         project_items.append(authors_str)
     except KeyError:
         pass
-    
     project_items.append(f"Source: {data['source']}")
-
     if is_uv_run():
         project_items.append("")
         project_items.append("Running using uv (look out we got a superuser over here!)")
 
     wrap_width = len(big_text_closer) - 2 - spacer_from_left
-
-    print(big_text)
-    for line in project_items:
-        for wrapped_line in textwrap.wrap(line, width=wrap_width) or [""]:
-            table_print_str = (
-                big_text_side_char
-                + " " * spacer_from_left
-                + f"{wrapped_line:<{wrap_width}}"
-                + big_text_side_char
-            )
-            print(table_print_str)
-    print(big_text_closer)
+    
+    if get_terminal_width() < len(big_text_closer):
+        # We don't have enough space to print the big text, so we'll just print the project items
+        print("ANDROMEDA")
+        print("=========")
+        for line in project_items:
+            print(line)
+    else:
+        print(big_text)
+        for line in project_items:
+            for wrapped_line in textwrap.wrap(line, width=wrap_width) or [""]:
+                table_print_str = (
+                    big_text_side_char
+                    + " " * spacer_from_left
+                    + f"{wrapped_line:<{wrap_width}}"
+                    + big_text_side_char
+                )
+                print(table_print_str)
+        print(big_text_closer)
     return None
 
 
