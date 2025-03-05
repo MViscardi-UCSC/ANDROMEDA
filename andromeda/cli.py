@@ -340,7 +340,7 @@ def print_andromeda_header(spacer_from_left=5):
     try:
         authors_str = f"Authors: {', '.join(data['authors'])}"
         project_items.append(authors_str)
-    except KeyError:
+    except TypeError:
         pass
     project_items.append(f"Source: {data['source']}")
     if is_uv_run():
