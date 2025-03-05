@@ -90,7 +90,7 @@ def extract_ref_oriented_sequence(
     # Now we need to be able to pull out the same nucleotides for the actual query sequence
     region_query_positions = [query for query, ref in aligned_pairs if ref is not None]
     region_query_sequence = [
-        read_alignment.query_sequence[i] if i else "." for i in region_query_positions
+        read_alignment.query_sequence[i] if i is not None else "." for i in region_query_positions
     ]
     if extract_phred:
         try:
@@ -98,7 +98,7 @@ def extract_ref_oriented_sequence(
                 pT.NucleotideQuality(
                     q_score=read_alignment.query_qualities[i]
                 ).to_phred_char()
-                if i
+                if i is not None
                 else " "
                 for i in region_query_positions
             ]
@@ -106,7 +106,7 @@ def extract_ref_oriented_sequence(
             # This is a case where the query quality is None because it wasn't stored in the BAM file?
             # We'll just give every read a "perfect" quality score for now...
             # TODO: Expand this functionality a bit more to handle this case better
-            region_query_phreds = ["A" if i else " " for i in region_query_positions]
+            region_query_phreds = ["A" if i is not None else " " for i in region_query_positions]
     output_dict = {
         "ref_positions": region_ref_positions,
         "ref_sequence": region_ref_sequence,
@@ -332,7 +332,8 @@ def call_consensus_from_bam(
     umi_groups = extract_umi_groups(bam_file, min_group_size)
 
     if len(umi_groups) == 0:
-        raise ValueError("❌ No UMI groups found matching provided cutoffs! Exiting.")
+        log.critical("❌ No UMI groups found matching provided cutoffs! Terminating Pipeline.")
+        raise ValueError("❌ No UMI groups found matching provided cutoffs! Terminating Pipeline.")
 
     results = []
     log.trace("Started calling consensus sequences tqdm loop.")
@@ -413,7 +414,9 @@ def consensus_df_to_bam(
 
         ref_id_to_contig_dict = build_ref_id_to_contig_dict(template_bam)
         contig_to_ref_id_dict = {v: k for k, v in ref_id_to_contig_dict.items()}
-
+        
+        output_bam.touch()
+        
         with pysam.AlignmentFile(
             output_bam,
             "wb",
@@ -438,9 +441,15 @@ def consensus_df_to_bam(
                 read.set_tag("ug", row["group_size"], "i")
                 outf.write(read)
     log.info(f"✅ Saved BAM file: {output_bam}")
-    pysam.sort("-o", str(output_bam.with_suffix(".sorted.bam")), str(output_bam))
+    pysam.sort(
+        "-o",
+        str(output_bam.with_suffix(".sorted.bam")),
+        str(output_bam),
+    )
     log.info(f"✅ Sorted BAM file: {output_bam.with_suffix('.sorted.bam')}")
-    pysam.index(str(output_bam.with_suffix(".sorted.bam")))
+    pysam.index(
+        str(output_bam.with_suffix(".sorted.bam")),
+    )
     log.info(f"✅ Indexed BAM file: {output_bam.with_suffix('.sorted.bam')}.bai")
     output_sam = output_bam.with_suffix(".sorted.bam").with_suffix(".sam")
     output_sam.touch()
