@@ -128,18 +128,7 @@ def extract_umis_from_bam(
     ref_dict = load_reference_contigs_to_dict(reference_file)
 
     log.info("🔍 Loading UMI positions...")
-    contig_umi_positions = load_umi_positions(umi_positions_file)
-
-    # Let's simlify the contig_umi_positions dict to only the first umi_option for each contig
-    log.info("🔍 Simplifying UMI positions to only a single option for each contig...")
-    simplified_contig_umi_positions = {}
-    for contig, umi_positions_list in contig_umi_positions.items():
-        if len(umi_positions_list) > 1:
-            log.warning(f"🚨 Multiple UMI positions found for contig {contig}!")
-            log.warning(f"🚨 Only the first UMI position will be used.")
-        simplified_contig_umi_positions[contig] = umi_positions_list[0]
-    contig_umi_positions = simplified_contig_umi_positions
-    umi_pos_dict = contig_umi_positions
+    umi_pos_dict = load_umi_positions(umi_positions_file, simplify_to_one_per_contig=True)
 
     if flanking_seq_to_capture > 0:
         log.info(

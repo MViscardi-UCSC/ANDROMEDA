@@ -66,26 +66,41 @@ def load_reference_contigs_to_dict(reference_path: str | Path) -> Dict[str, str]
     return records_dict
 
 
-def load_umi_positions(umi_positions_file: Path) -> Dict[str, List[Tuple[int, int]]]:
+def load_umi_positions(umi_positions_file: Path,
+                       simplify_to_one_per_contig: bool = True,
+                       ) -> Dict[str, List[Tuple[int, int]]]:
     """Loads UMI positions from a TSV file and converts them into a dictionary."""
     contig_df = pd.read_csv(umi_positions_file)
     # Columns = "ref_contig", "start", "end", "date_time"
 
-    output_dict = {}  # Dict of umi_positions per contig
+    full_contig_positions = {}  # Dict of umi_positions per contig
     for contig, row in contig_df.set_index("ref_contig").iterrows():
-        if contig not in output_dict:
+        if contig not in full_contig_positions:
             # Start a new list of UMI positions for this contig, with an index of 0
             umi_contig_index = 0
-            output_dict[contig] = [(umi_contig_index, (row["start"], row["end"]))]
+            full_contig_positions[contig] = [(umi_contig_index, (row["start"], row["end"]))]
         else:
             # Add the new UMI position to the list for this contig, with an index of the previous position + 1
-            prev_index = output_dict[contig][-1][0]
+            prev_index = full_contig_positions[contig][-1][0]
             umi_contig_index = prev_index + 1
-            output_dict[contig].append((umi_contig_index, (row["start"], row["end"])))
+            full_contig_positions[contig].append((umi_contig_index, (row["start"], row["end"])))
         log.info(
             f"📍 UMI Region for {contig} (#{umi_contig_index:0>2}): {row['start']}-{row['end']}"
         )
-    return output_dict
+    if not simplify_to_one_per_contig:
+        log.info(f"🔍 Keeping all UMI positions for each contig...")
+        umi_pos_dict = full_contig_positions
+    else:
+        log.info("🔍 Simplifying UMI positions to only a single option for each contig...")
+        simplified_contig_umi_positions = {}
+        for contig, umi_positions_list in full_contig_positions.items():
+            if len(umi_positions_list) > 1:
+                log.warning(f"🚨 Multiple UMI positions found for contig {contig}!")
+                log.warning(f"🚨 Only the first UMI position will be used.")
+            simplified_contig_umi_positions[contig] = umi_positions_list[0]
+        full_contig_positions = simplified_contig_umi_positions
+        umi_pos_dict = full_contig_positions
+    return umi_pos_dict
 
 
 if __name__ == "__main__":
