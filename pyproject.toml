@@ -2,9 +2,12 @@
 name = "andromeda"
 version = "0.2.2"
 authors = [
-    { name = "Marcus J Viscardi", email = "marcus.viscardi@gmail.com" },
-    { name = "Liam Tran", email = "lihetran@ucsc.edu" },
-    { name = "Joshua A Arribere", email = "jaarribere@gmail.com" }
+    {name = "Marcus J Viscardi"},
+    {name = "Liam Tran"},
+    {name = "Joshua A Arribere"},
+]
+maintainers = [
+    {name = "Marcus J Viscardi", email = "marcus.viscardi@gmail.com"},
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
