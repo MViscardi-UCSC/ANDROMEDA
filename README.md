@@ -11,12 +11,15 @@
 ```
 
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](https://www.python.org/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![GitHub License](https://img.shields.io/github/license/MViscardi-UCSC/ANDROMEDA)](https://github.com/MViscardi-UCSC/ANDROMEDA/blob/master/LICENSE)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/t/MViscardi-UCSC/ANDROMEDA)](https://github.com/MViscardi-UCSC/ANDROMEDA/commits/master/)
 [![GitHub contributors](https://img.shields.io/github/contributors/MViscardi-UCSC/ANDROMEDA)](https://github.com/MViscardi-UCSC/ANDROMEDA/commits/master/)
 [![GitHub Tag](https://img.shields.io/github/v/tag/MViscardi-UCSC/ANDROMEDA?logo=github)](https://github.com/MViscardi-UCSC/ANDROMEDA/tags)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/MViscardi-UCSC/ANDROMEDA/python-package.yml?logo=github&label=CI&link=https%3A%2F%2Fgithub.com%2FMViscardi-UCSC%2FANDROMEDA%2Factions%2Fworkflows%2Fpython-package.yml)](https://github.com/MViscardi-UCSC/ANDROMEDA/actions/workflows/python-package.yml)
+
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/MViscardi-UCSC/ANDROMEDA/uvx_ready.yml?label=UVX%20ready)](https://github.com/MViscardi-UCSC/ANDROMEDA/actions/workflows/uvx_ready.yml)
+
 
 
 **Alignment-based Nucleotide Detection and Read Optimization for Mapping Errors, Deaminations, and Alterations**
