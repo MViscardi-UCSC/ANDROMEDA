@@ -139,6 +139,9 @@ def bam_to_tagged_bam(
                 desc=f"Extracting UMIs from {target_chr}",
             )
             for i, entry in bam_iterator:
+                # Only primary alignments should be considered
+                if entry.is_secondary or entry.is_supplementary:
+                    continue  # TODO: allow for secondary and supplementary alignments to be considered
                 try:
                     entry_dict = extract_ref_and_query_region(
                         entry, ref_seq, umi_ref_start, umi_ref_end
@@ -307,6 +310,10 @@ def extract_ref_and_query_region(
     region_query_positions = extract_query_positions_from_ref(
         aligned_pairs, region_start, region_end
     )
+    if target_entry.query_sequence is None:
+        raise ValueError("Query sequence is None")
+    if region_query_positions is None:
+        raise ValueError("Query positions are None")
     region_query_sequence = [
         target_entry.query_sequence[i] if i is not None else "." for i in region_query_positions
     ]
