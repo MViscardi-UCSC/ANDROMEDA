@@ -142,6 +142,7 @@ def bam_to_tagged_bam(
                 # Only primary alignments should be considered
                 if entry.is_secondary or entry.is_supplementary:
                     continue  # TODO: allow for secondary and supplementary alignments to be considered
+                    # The reason we don't consider them now is that they may not have a sequence!!
                 try:
                     entry_dict = extract_ref_and_query_region(
                         entry, ref_seq, umi_ref_start, umi_ref_end
