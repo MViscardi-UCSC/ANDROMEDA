@@ -255,21 +255,30 @@ def run_all_pipeline(args):
         # Let's look to see if we can find the UMI position TSV file
         current_suffix = args.ref_fasta.suffix
         umi_positions = args.ref_fasta.with_suffix(current_suffix + ".targetUMIs.csv")
-        if umi_positions.exists() and not args.extraction_do_not_confirm:
-            use_old_umi_pos = input(
-                f"Found existing UMI position TSV file at {umi_positions}. "
-                "Use this file? (y/n): "
-            )
-            if use_old_umi_pos.lower() == "y":
-                args.umi_positions = umi_positions
-                log.debug(
-                    f"Using existing UMI position TSV file at {umi_positions}. The user confirmed this."
+        # First, let's look if the umi_file exists, then we can look in the output to see if we made it previously!
+        if not umi_positions.exists():
+            log.debug(f"Could not find UMI position TSV file with the reference path at {umi_positions}")
+            log.debug(f"Checking output directory for existing UMI position TSV file from previous pipeline runs.")
+            alt_positions_file = args.output_parent_dir / "references" / umi_positions.name
+            if alt_positions_file.exists():
+                umi_positions = alt_positions_file
+        
+        if umi_positions.exists():
+            if not args.extraction_do_not_confirm:
+                use_old_umi_pos = input(
+                    f"Found existing UMI position TSV file at {umi_positions}. "
+                    "Use this file? (y/n): "
                 )
+                if use_old_umi_pos.lower() == "y":
+                    args.umi_positions = umi_positions
+                    log.debug(
+                        f"Using existing UMI position TSV file at {umi_positions}. The user confirmed this."
+                    )
+                else:
+                    args.umi_positions = None
             else:
-                args.umi_positions = None
-        elif umi_positions.exists() and args.extraction_do_not_confirm:
-            args.umi_positions = umi_positions
-            log.debug(f"Using existing UMI position TSV file at {umi_positions}.")
+                args.umi_positions = umi_positions
+                log.debug(f"Using existing UMI position TSV file at {umi_positions}.")
     else:
         assert args.umi_positions.exists(), (
             f"UMI position TSV file not found: {args.umi_positions}"
